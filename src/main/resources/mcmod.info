@@ -1,0 +1,12 @@
+[
+  {
+    "modid": "dpcanvas",
+    "name": "Pride Canvas",
+    "description": "Custom Pride screens (one mod, toggleable): a Waybar-style main menu, a world-select carousel, centered popups, translucent buttons, a moving Pride wallpaper, and a native see-through scrolling-log loading screen for both world load and game start. Website + wallpaper configurable in config/dpcanvas.cfg.",
+    "version": "0.2.0",
+    "mcversion": "1.12.2",
+    "authorList": ["Pride"],
+    "credits": "Built by Claude",
+    "logoFile": ""
+  }
+]

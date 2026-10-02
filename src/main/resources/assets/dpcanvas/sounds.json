@@ -1,0 +1,119 @@
+{
+ "ui.hover": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/hover",
+    "stream": false
+   }
+  ]
+ },
+ "ui.click": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/click",
+    "stream": false
+   }
+  ]
+ },
+ "ui.back": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/back",
+    "stream": false
+   }
+  ]
+ },
+ "ui.open": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/open",
+    "stream": false
+   }
+  ]
+ },
+ "ui.close": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/close",
+    "stream": false
+   }
+  ]
+ },
+ "ui.popup": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/popup",
+    "stream": false
+   }
+  ]
+ },
+ "ui.confirm": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/confirm",
+    "stream": false
+   }
+  ]
+ },
+ "music.pride.day": {
+  "category": "music",
+  "sounds": [
+   {
+    "name": "dpcanvas:music/day_meadow",
+    "stream": true
+   }
+  ]
+ },
+ "music.pride.night": {
+  "category": "music",
+  "sounds": [
+   {
+    "name": "dpcanvas:music/night_stars",
+    "stream": true
+   }
+  ]
+ },
+ "music.pride.caves": {
+  "category": "music",
+  "sounds": [
+   {
+    "name": "dpcanvas:music/caves_deep",
+    "stream": true
+   }
+  ]
+ },
+ "music.pride.nether": {
+  "category": "music",
+  "sounds": [
+   {
+    "name": "dpcanvas:music/nether_fire",
+    "stream": true
+   }
+  ]
+ },
+ "music.pride.end": {
+  "category": "music",
+  "sounds": [
+   {
+    "name": "dpcanvas:music/end_void",
+    "stream": true
+   }
+  ]
+ },
+ "music.pride.town": {
+  "category": "music",
+  "sounds": [
+   {
+    "name": "dpcanvas:music/town_market",
+    "stream": true
+   }
+  ]
+ }
+}
