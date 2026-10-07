@@ -43,7 +43,7 @@ public final class DPLoadingScreen {
         fr.drawStringWithShadow(back, backX + (backSz - fr.getStringWidth(back)) / 2.0f, backY + (backSz - 8) / 2.0f, GREEN_LT);
         DPChrome.drawBrand(mc, gw);
         int cx = gw / 2, cy = (int) (gh * 0.34);
-        drawSpinner(cx, cy, 30, t);
+        if (DPBootSettings.show("w.spinner")) drawSpinner(cx, cy, 30, t);
         String header = "Loading";
         for (String r : DPLogBuffer.last(4)) {
             String low = r.toLowerCase();
@@ -57,6 +57,11 @@ public final class DPLoadingScreen {
         GlStateManager.popMatrix();
 
         // ----- the splash's green box, in real pixels: MEMORY bar, LOAD bar under it, white log -----
+        // her 8K screen 10-02: 820 REAL px was a sliver — draw the box in scaled units (×1 per 720 px of height)
+        int bs = Math.max(1, height / 720);
+        GlStateManager.pushMatrix();
+        GlStateManager.scale((float) bs, (float) bs, 1.0F);
+        width /= bs; height /= bs;
         int boxW = Math.min(width - 60, 820);
         int bx = (width - boxW) / 2;
         int top = (int) (height * 0.56);
@@ -72,20 +77,20 @@ public final class DPLoadingScreen {
         long max = Runtime.getRuntime().maxMemory(), used = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         int memPct = max > 0 ? (int) Math.max(0, Math.min(100, 100L * used / max)) : 0;
         Gui.drawRect(bx, memTop, bx + boxW, memTop + BAR_H, SPLASH_DIM);
-        int memFill = (int) (boxW * (memPct / 100.0));
+        int memFill = DPBootSettings.show("membar") ? (int) (boxW * (memPct / 100.0)) : 0;
         if (memFill > 0) Gui.drawRect(bx, memTop, bx + memFill, memTop + BAR_H, GREEN);
         Gui.drawRect(bx, loadTop, bx + boxW, loadTop + BAR_H, SPLASH_DIM);
         int fill = (int) (boxW * (progress / 100.0));
         if (fill > 0) Gui.drawRect(bx, loadTop, bx + fill, loadTop + BAR_H, GREEN);
 
-        fr.drawStringWithShadow("MEMORY " + memPct + "%", bx + 4, memTop + 1, WHITE);
+        if (DPBootSettings.show("membar")) fr.drawStringWithShadow("MEMORY " + memPct + "%", bx + 4, memTop + 1, WHITE);
         fr.drawStringWithShadow("LOAD " + progress + "%", bx + 4, loadTop + 1, WHITE);
         String eta = DPEta.text();                                           // Zoomies' "about 3m 20s left"
-        if (eta != null) fr.drawStringWithShadow(eta, bx + boxW - 4 - fr.getStringWidth(eta), loadTop + 1, WHITE);
+        if (eta != null && DPBootSettings.show("eta")) fr.drawStringWithShadow(eta, bx + boxW - 4 - fr.getStringWidth(eta), loadTop + 1, WHITE);
 
         int logTop = loadTop + BAR_H + 3;
         int rows = Math.max(1, (bottom - logTop) / LINE_H);
-        List<String> lines = DPLogBuffer.last(rows);
+        List<String> lines = DPBootSettings.show("w.log") ? DPLogBuffer.last(rows) : java.util.Collections.<String>emptyList();
         int ly = logTop;
         if (lines.isEmpty()) {
             fr.drawStringWithShadow("Loading\u2026", bx + 5, ly, WHITE);
@@ -95,6 +100,12 @@ public final class DPLoadingScreen {
                 ly += LINE_H;
             }
         }
+        // #21-#23: connection / download / world stats card, top-left
+        DPWorldStats.refresh(mc);
+        int cardW = Math.min(270, width / 4 + 40);
+        int cardBottom = DPBootSettings.show("w.stats") ? DPWorldStats.draw(fr, 10, 40, cardW) : 34;
+        if (DPBootSettings.show("w.map")) DPWorldStats.drawMap(fr, 10, cardBottom + 6, Math.min(cardW - 10, top - cardBottom - 34));
+        GlStateManager.popMatrix();
         GlStateManager.color(1F, 1F, 1F, 1F);
     }
 

@@ -10,14 +10,14 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import java.util.Random;
 
 /**
- * Pride menu sounds (her ask 2026-09-30: "pretty sounds when you click a button or hover"). The sounds are
+ * Pride menu sounds (requested feature). The sounds are
  * synthesized by tools/make_ui_sounds.py (glass chimes + soft whooshes), not taken from anywhere.
  * Volume and on/off live in the config; hover sounds are rate-limited so sweeping the mouse isn't noisy.
  */
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = DPMenuMod.MODID)
 public final class DPSounds {
     public static final SoundEvent HOVER = ev("ui.hover"), CLICK = ev("ui.click"), BACK = ev("ui.back"), OPEN = ev("ui.open"),
-            CLOSE = ev("ui.close"), POPUP = ev("ui.popup"), CONFIRM = ev("ui.confirm");
+            CLOSE = ev("ui.close"), POPUP = ev("ui.popup"), CONFIRM = ev("ui.confirm"), POP = ev("ui.pop");
     private static final Random RNG = new Random();
     private static long lastHover;
 
@@ -28,7 +28,7 @@ public final class DPSounds {
 
     @SubscribeEvent
     public static void register(RegistryEvent.Register<SoundEvent> e) {
-        e.getRegistry().registerAll(HOVER, CLICK, BACK, OPEN, CLOSE, POPUP, CONFIRM);
+        e.getRegistry().registerAll(HOVER, CLICK, BACK, OPEN, CLOSE, POPUP, CONFIRM, POP);
     }
 
     public static void play(SoundEvent s) { play(s, 1f, 1f); }
@@ -50,6 +50,13 @@ public final class DPSounds {
         if (t - lastHover < 45) return;
         lastHover = t;
         float[] scale = {1f, 1.122f, 1.26f, 1.335f, 1.498f, 1.682f, 1.888f, 2f};   // major scale steps
-        play(HOVER, scale[Math.floorMod(index, scale.length)] * 0.9f, 1f);
+        play(HOVER, scale[Math.floorMod(index, scale.length)] * 0.9f, 1.6f);   // her 2026-10-04: louder, she couldn't hear it
+    }
+
+    /** a tile popping in: a bubbly pop that climbs the scale tile after tile */
+    public static void popIn(int index) {
+        if (!DPConfig.hoverSounds) return;
+        float[] scale = {1f, 1.122f, 1.26f, 1.335f, 1.498f, 1.682f, 1.888f, 2f};
+        play(POP, 0.85f * scale[Math.floorMod(index, scale.length)] * (index >= scale.length ? 1.12f : 1f), 1.5f);   // 8-bit bloop, matches the chiptune music
     }
 }

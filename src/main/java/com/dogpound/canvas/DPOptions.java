@@ -15,7 +15,7 @@ public class DPOptions extends GuiOptions {
         super(parent, settings);
     }
 
-    // her ask 2026-10-01: a Shaders button, a Distant Horizons button and a Celeritas button, always there
+    // Requested: a Shaders button, a Distant Horizons button and a Celeritas button, always there
     private static final int SHADERS = 9100, DISTANT = 9101, CELERITAS = 9102, SHADERS_OFF = 9103;
     /** measured 2026-10-02: with AUSM loaded it draws terrain itself even with NO shader pack (Celeritas sits idle) —
      *  ~56 vs ~100 FPS in the big pack. So the shader engine is opt-in: its jar is renamed with this ending while off. */
@@ -25,6 +25,11 @@ public class DPOptions extends GuiOptions {
             {"9100", "Shaders", "com.luna.ausm.impl.client.gui.GuiShaders", "new"},
             {"9101", "Distant Horizons", "com.seibel.distanthorizons.common.wrappers.gui.GetConfigScreen", "getScreen"},
             {"9102", "Celeritas", "org.taumc.celeritas.impl.gui.CeleritasVideoOptionsScreen", "new"},
+            {"9104", "\u2726 Crosshair", "com.dogpound.canvas.DPCrosshairScreen", "new"},
+            {"9105", "\u2726 Pride Holo", "net.dries007.holoInventory.client.GuiPrideHolo", "new"},
+            {"9106", "\u2726 System Monitor", "com.dogpound.canvas.DPSysMonitor", "new"},
+            {"9107", "\u2726 Loading Screen", "com.dogpound.canvas.DPBootOptionsScreen", "new"},
+            {"9108", "\u2726 Themes", "com.dogpound.canvas.DPMenuThemeScreen", "new"},
     };
 
     @Override

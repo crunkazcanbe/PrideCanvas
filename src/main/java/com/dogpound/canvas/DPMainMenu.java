@@ -24,12 +24,17 @@ public class DPMainMenu extends GuiScreen {
 
     private boolean quitPopup = false;
     private long openedAt, popupAt;
+    private int poppedSounds;
     private static final String[] QUOTES = {"trans rights are human rights", "you are loved ❤", "you are valid", "love is love",
             "you belong here", "protect trans kids", "made with love", "be proud of who you are"};
+    /** Themes > Pride messages off: friendly, neutral lines instead */
+    private static final String[] NEUTRAL = {"welcome back", "happy mining", "build something amazing", "go explore", "mind the creepers",
+            "made with love", "have fun out there", "adventure awaits"};
 
     @Override
     public void initGui() {
         this.buttonList.clear();
+        DPWorldCancel.reset();                                  // a cancelled world load lands here
         if (openedAt == 0) { openedAt = DPAnim.now(); DPSounds.play(DPSounds.OPEN, 0.95f, 0.6f); }
 
         if (quitPopup) {
@@ -54,6 +59,19 @@ public class DPMainMenu extends GuiScreen {
             if (ids[i] == 4) b.sound(DPSounds.POPUP);
             this.addButton(b);
         }
+
+        // "Music: ON/OFF" switch, bottom-right (shared with the loading screen; see DPMusicPause)
+        String ml = DPMusicPause.label();
+        int mw = this.fontRenderer.getStringWidth(ml) + 16;
+        this.addButton(new DPButton(20, this.width - mw - 6, this.height - 26, mw, 18, ml).plain().sound(DPSounds.CONFIRM));
+
+        // "Loaded in 4m 12s - why?" -> the boot report (loading screen roadmap #3)
+        try {
+            if (DPBoot.totalMs >= 0 && DPBootSettings.show("loadedin")) {
+                String bl = "\u23F1 Loaded in " + DPBoot.fmt(DPBoot.totalMs) + (DPBoot.fastestYet() ? " - \u2605 fastest yet!" : " - why?");
+                this.addButton(new DPButton(21, 6, this.height - 26, this.fontRenderer.getStringWidth(bl) + 16, 18, bl).plain().sound(DPSounds.CONFIRM));
+            }
+        } catch (Throwable t) { /* the chip is optional; the menu must always open */ }
     }
 
     /** The menu panel: centred, but pushed down below the brand logo when there's room. */
@@ -90,7 +108,7 @@ public class DPMainMenu extends GuiScreen {
         float bob = anim ? (float) Math.sin(DPAnim.now() / 650.0) * 1.5f : 0;
         net.minecraft.client.renderer.GlStateManager.pushMatrix();
         net.minecraft.client.renderer.GlStateManager.translate(0, bob, 0);
-        DPCharacter.draw(this.mc, 10, 8, 3);
+        if (DPConfig.themeCharacter) DPCharacter.draw(this.mc, 10, 8, 3);
         net.minecraft.client.renderer.GlStateManager.popMatrix();
 
         // Brand logo drops in with a bounce
@@ -111,8 +129,10 @@ public class DPMainMenu extends GuiScreen {
             drawQuote(f);
             int i = 0;
             for (GuiButton b : this.buttonList) {                   // tiles cascade in, one after another
+                int idx = i;
                 float pop = anim ? DPAnim.easeOutBack(DPAnim.progress(openedAt, 280 + i++ * 55L, 300)) : 1;
                 if (pop <= 0.01f) continue;
+                if (anim && idx >= poppedSounds) { poppedSounds = idx + 1; DPSounds.popIn(idx); }   // each tile pops in with a note
                 net.minecraft.client.renderer.GlStateManager.pushMatrix();
                 float cx = b.x + b.width / 2f, cy = b.y + b.height / 2f;
                 net.minecraft.client.renderer.GlStateManager.translate(cx, cy, 0);
@@ -121,11 +141,12 @@ public class DPMainMenu extends GuiScreen {
                 b.drawButton(this.mc, mouseX, mouseY, partialTicks);
                 net.minecraft.client.renderer.GlStateManager.popMatrix();
             }
+            // drawStartHere();   // removed 2026-10-04: she found the pointer ugly
             net.minecraft.client.renderer.GlStateManager.popMatrix();
         } else {
             // Dim the wallpaper without hiding it, then the house-style dialog popping in.
             float p = anim ? DPAnim.easeOutBack(DPAnim.progress(popupAt, 0, 260)) : 1;
-            drawRect(0, 0, this.width, this.height, ((int) (0x99 * Math.min(1f, p)) << 24) | 0x140C1F);
+            drawRect(0, 0, this.width, this.height, ((int) (0x99 * Math.min(1f, p)) << 24) | (PrideFrame.PANEL_BOTTOM & 0xFFFFFF));
             PrideFrame pf = popup();
             net.minecraft.client.renderer.GlStateManager.pushMatrix();
             net.minecraft.client.renderer.GlStateManager.translate(this.width / 2f, this.height / 2f, 0);
@@ -143,7 +164,8 @@ public class DPMainMenu extends GuiScreen {
     /** the panel's top-right: her subtitle first, then a new Pride quote every few seconds, cross-fading */
     private void drawQuote(PrideFrame f) {
         String first = DPConfig.menuSubtitle == null ? "" : DPConfig.menuSubtitle.trim();
-        String[] all = first.isEmpty() || first.equalsIgnoreCase("v3") ? QUOTES : prepend(first, QUOTES);
+        String[] pool = DPConfig.themePrideMessages ? QUOTES : NEUTRAL;
+        String[] all = first.isEmpty() || first.equalsIgnoreCase("v3") ? pool : prepend(first, pool);
         long period = 6500, t = DPAnim.now() - openedAt;
         int i = (int) ((t / period) % all.length);
         float phase = (t % period) / (float) period;
@@ -160,6 +182,100 @@ public class DPMainMenu extends GuiScreen {
         int k = 1;
         for (String r : rest) if (!r.equalsIgnoreCase(a)) out[k++] = r;
         return java.util.Arrays.copyOf(out, k);
+    }
+
+    /** the menu theme's colour band (Pride = the rainbow), RGB */
+    private static int band(int i) { return PrideFrame.RAINBOW[Math.floorMod(i, PrideFrame.RAINBOW.length)] & 0xFFFFFF; }
+
+    /**
+     * Points new players at the server (requested feature): a rainbow border runs round the Multiplayer tile with a soft pulsing glow,
+     * a dark Pride badge "\u2726 Join the Pride Server" with a twinkling sparkle, and three chevrons that light up
+     * one after another, flowing into the button.
+     */
+    private void drawStartHere() {
+        GuiButton mp = null;
+        for (GuiButton b : this.buttonList) if (b.id == 1) mp = b;
+        if (mp == null || !mp.visible) return;
+        float t = DPAnim.now() - openedAt;
+        if (t < 900) return;                                    // after the tiles have popped in
+        boolean anim = DPConfig.animations;
+        float in = Math.min(1F, (t - 900) / 400F);              // fade in
+        long now = System.currentTimeMillis();
+
+        // glow: two soft rings that breathe
+        float pulse = anim ? (float) (0.5 + 0.5 * Math.sin(now / 380.0)) : 0.6F;
+        for (int r = 3; r >= 1; r--) {
+            int a = (int) (in * (18 + 30 * pulse) / r);
+            outline(mp.x - r * 2, mp.y - r * 2, mp.width + r * 4, mp.height + r * 4, (a << 24) | (PrideFrame.PINK & 0xFFFFFF));
+        }
+        // the running rainbow border
+        int phase = anim ? (int) (now / 45) : 0;
+        rainbowBorder(mp.x - 1, mp.y - 1, mp.width + 2, mp.height + 2, phase, (int) (255 * in));
+
+        // badge + chevrons on the left, or above the tile when there's no room
+        String label = "\u2726 Join the Pride Server";
+        int lw = this.fontRenderer.getStringWidth(label);
+        int bw = lw + 14, bh = 15, chevW = 22;
+        int bob = anim ? (int) Math.round(Math.sin(now / 260.0) * 2) : 0;
+        boolean left = mp.x - bw - chevW - 6 >= 4;
+        int bx, by;
+        if (left) { bx = mp.x - bw - chevW - 4 + bob; by = mp.y + mp.height / 2 - bh / 2; }
+        else      { bx = mp.x + (mp.width - bw) / 2; by = mp.y - bh - chevW + 4 + bob; }
+        int alpha = (int) (230 * in);
+        drawRect(bx - 1, by - 1, bx + bw + 1, by + bh + 1, (alpha << 24) | (PrideFrame.PANEL_BOTTOM & 0xFFFFFF));
+        drawGradientRect(bx, by, bx + bw, by + bh, (alpha << 24) | (PrideFrame.TILE_ON & 0xFFFFFF), (alpha << 24) | (PrideFrame.TILE & 0xFFFFFF));
+        int seg = Math.max(1, bw / PrideFrame.RAINBOW.length);                // rainbow underline
+        for (int i = 0; i < PrideFrame.RAINBOW.length; i++)
+            drawRect(bx + i * seg, by + bh - 1, i == PrideFrame.RAINBOW.length - 1 ? bx + bw : bx + (i + 1) * seg, by + bh, (alpha << 24) | band(i));
+        float tw = anim ? (float) (0.5 + 0.5 * Math.sin(now / 160.0)) : 1F;   // sparkle twinkle
+        int spark = blend((PrideFrame.PINK & 0xFFFFFF), 0xFFFFFF, tw);
+        this.fontRenderer.drawStringWithShadow("\u2726", bx + 7, by + 4, ((int) (255 * in) << 24) | spark);
+        this.fontRenderer.drawStringWithShadow(label.substring(1), bx + 7, by + 4, ((int) (255 * in) << 24) | 0xFFFFFF);
+
+        // three chevrons lighting up in sequence, flowing toward the tile
+        int step = anim ? (int) (now / 160) % 4 : 3;
+        for (int i = 0; i < 3; i++) {
+            float lit = i < step ? 1F : 0.25F;
+            int col = ((int) (255 * in * lit) << 24) | band((i * 2 + 1) % PrideFrame.RAINBOW.length);
+            if (left) chevron(bx + bw + 3 + i * 6, mp.y + mp.height / 2, true, col);
+            else chevron(mp.x + mp.width / 2, by + bh + 2 + i * 6, false, col);
+        }
+    }
+
+    private void outline(int x, int y, int w, int h, int col) {
+        drawRect(x, y, x + w, y + 1, col); drawRect(x, y + h - 1, x + w, y + h, col);
+        drawRect(x, y + 1, x + 1, y + h - 1, col); drawRect(x + w - 1, y + 1, x + w, y + h - 1, col);
+    }
+
+    /** a border made of short rainbow dashes that march around the rectangle */
+    private void rainbowBorder(int x, int y, int w, int h, int phase, int alpha) {
+        int per = 2 * (w + h), dash = 5;
+        for (int d = 0; d < per; d += dash) {
+            int col = (alpha << 24) | band(Math.floorMod(d / dash - phase, PrideFrame.RAINBOW.length));
+            for (int k = d; k < Math.min(per, d + dash); k++) {
+                int px, py;
+                if (k < w) { px = x + k; py = y; }
+                else if (k < w + h) { px = x + w - 1; py = y + (k - w); }
+                else if (k < 2 * w + h) { px = x + w - 1 - (k - w - h); py = y + h - 1; }
+                else { px = x; py = y + h - 1 - (k - 2 * w - h); }
+                drawRect(px, py, px + 1, py + 1, col);
+            }
+        }
+    }
+
+    /** a 5px chevron: pointing right (at x,y = its tip's row centre) or down */
+    private void chevron(int x, int y, boolean right, int col) {
+        for (int i = 0; i < 4; i++) {
+            if (right) { drawRect(x + i, y - 4 + i, x + i + 2, y - 3 + i, col); drawRect(x + i, y + 3 - i, x + i + 2, y + 4 - i, col); }
+            else { drawRect(x - 4 + i, y + i, x - 3 + i, y + i + 2, col); drawRect(x + 3 - i, y + i, x + 4 - i, y + i + 2, col); }
+        }
+    }
+
+    private static int blend(int a, int b, float t) {
+        int r = (int) (((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * t);
+        int g = (int) (((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * t);
+        int bl = (int) ((a & 255) + ((b & 255) - (a & 255)) * t);
+        return (r << 16) | (g << 8) | bl;
     }
 
     private void GlStateManagerPush() {
@@ -190,10 +306,17 @@ public class DPMainMenu extends GuiScreen {
                 DPWeb.open(this, DPWeb.homeUrl());                             // in-game when Chromium works, else the Pride floating browser
                 break;
             case 6:
-                this.mc.displayGuiScreen(new DPModBrowser(this));   // native page, not the old external mod
+                this.mc.displayGuiScreen(new DPContentBrowser(this));   // Modrinth + CurseForge in our own menus (2026-10-04)
                 break;
             case 7:
                 openConfig();
+                break;
+            case 21:
+                this.mc.displayGuiScreen(new DPBootReport(this));
+                break;
+            case 20:
+                DPMusicPause.toggle();
+                button.displayString = DPMusicPause.label();
                 break;
             case 100:
                 this.mc.shutdown();

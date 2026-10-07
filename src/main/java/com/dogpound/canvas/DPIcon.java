@@ -10,8 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The Pride window icon and title (her ask 2026-10-01: "the little icon at the top left of the window … change that to
- * something that matches the modpack"). The block-P icon in trans stripes is in assets/pridecanvas/icon/icon_<size>.png.
+ * The Pride window icon and title (requested feature). The block-P icon in trans stripes is in assets/pridecanvas/icon/icon_<size>.png.
  */
 public final class DPIcon {
     private DPIcon() {}
@@ -32,6 +31,21 @@ public final class DPIcon {
             System.out.println("[PrideCanvas] window icon not set: " + t);
         }
         try { Display.setTitle("Pride"); } catch (Throwable ignored) {}
+        if (!keeping) { keeping = true; net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new DPIcon.Keeper()); }
+    }
+
+    private static boolean keeping;
+
+    /** Just Stargate Mod (and others) rename the window later ("Minceraft 1.12.2 w/Just Stargate Mod…", her 2026-10-05):
+     *  put "Pride" back, checked once a second */
+    public static final class Keeper {
+        private int t;
+
+        @net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+        public void tick(net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent e) {
+            if (e.phase != net.minecraftforge.fml.common.gameevent.TickEvent.Phase.END || ++t % 20 != 0) return;
+            try { if (!"Pride".equals(Display.getTitle())) Display.setTitle("Pride"); } catch (Throwable ignored) {}
+        }
     }
 
     private static ByteBuffer rgba(BufferedImage img) {

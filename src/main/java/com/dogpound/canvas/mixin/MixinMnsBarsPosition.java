@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Her ask 2026-10-02: move the Mine and Slash bars (level badge + health/mana/energy/xp, all as one block) — at
+ * Requested: move the Mine and Slash bars (level badge + health/mana/energy/xp, all as one block) — at
  * top-left the inventory's side buttons covered them and the quest boxes crowded them. Mine and Slash draws every
  * style from BarsGUI.onRenderPlayerOverlay at the top-left corner, so the whole block is shifted there in one go.
  */
@@ -21,8 +21,11 @@ public abstract class MixinMnsBarsPosition {
     @Unique private static final int PRIDE_W = 116, PRIDE_H = 34;   // the Azure block's size in GUI pixels
     @Unique private boolean pride$pushed;
 
-    @Inject(method = "onRenderPlayerOverlay", at = @At("HEAD"), require = 0)
+    @Inject(method = "onRenderPlayerOverlay", at = @At("HEAD"), require = 0, cancellable = true)
     private void pride$move(RenderGameOverlayEvent e, CallbackInfo ci) {
+        // the Pride HUD has its own Mine and Slash card: don't draw the bars a second time at the top (requested feature)
+        if (com.dogpound.canvas.DPConfig.hudEnabled && com.dogpound.canvas.DPHudSettings.get().mode("mmorpg") != 1
+                && Minecraft.getMinecraft().world != null && !Minecraft.getMinecraft().gameSettings.hideGUI) { ci.cancel(); return; }
         ScaledResolution r = new ScaledResolution(Minecraft.getMinecraft());
         int w = r.getScaledWidth(), h = r.getScaledHeight(), x = 0, y = 0;
         switch (String.valueOf(DPConfig.mnsBarsPosition).toLowerCase()) {

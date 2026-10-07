@@ -29,14 +29,13 @@ import java.util.Locale;
 public final class DPSplashHook {
     private DPSplashHook() {}
 
-    private static final int GREEN     = 0xFFF5A9B8; // border / bar fill / title
     private static final int GREEN_DIM = 0x66102808; // translucent green bar track (see-through)
     private static final int BOX_FILL  = 0x0A0A1A06; // clearly translucent -> the moving wallpaper shows through
     private static final int WHITE     = 0xFFFFFFFF; // log / labels (drawn with shadow = readable anywhere)
     private static final int LINE_H    = 10;
     private static final int BAR_H     = 11;         // both bars this tall (fits the label text)
 
-    private static boolean loggedOk = false, loggedErr = false;
+    private static boolean loggedOk = false, loggedErr = false, loggedPanelErr = false;
 
     // wallpaper FRAMES, loaded lazily on the splash thread (guarded), ANIMATED like the menu
     private static final int BG_COUNT = 60;
@@ -53,6 +52,7 @@ public final class DPSplashHook {
     // scrolling log fed from live mod-loading status (version-proof; no log4j appender)
     private static final java.util.Deque<String> LOG = new java.util.concurrent.ConcurrentLinkedDeque<String>();
     private static String lastLine = "";
+    private static int logCount;
     private static final int LOG_MAX = 80;
 
     private static void pushLog(String s) {
@@ -60,19 +60,16 @@ public final class DPSplashHook {
         s = s.trim();
         if (s.isEmpty() || s.equals(lastLine)) return;   // only add when the status actually changes
         lastLine = s;
+        logCount++;
         LOG.addLast(s);
         while (LOG.size() > LOG_MAX) LOG.pollFirst();
     }
 
-    private static List<String> recentLog(int n) {
-        List<String> all = new java.util.ArrayList<String>(LOG);
-        int from = Math.max(0, all.size() - n);
-        return all.subList(from, all.size());
-    }
-
     public static void render(FontRenderer fr) {
+        if (!DPConfig.enableLoading) return;
+        DPBoot.frameBegin();
         try {
-            if (!DPConfig.enableLoading) return;
+            DPBootTheme.apply();   // #32 theme palette (only does work when it changed)
             if (!loggedOk) { loggedOk = true; System.out.println("[DogPound] native splash render reached"); }
 
             // The coremod installs the log buffer on the AppClassLoader; THIS class runs on the
@@ -94,10 +91,20 @@ public final class DPSplashHook {
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
             // ---- wallpaper, full-screen stretch (same placement as the main menu) ----
-            drawWallpaper(w, h);
+            boolean term = DPBootSettings.on("terminal", false);   // #33 terminal boot-sequence layout
+            boolean turbo = DPBootSettings.on("turbo", false);     // #34 Turbo: the cheapest possible screen
+            DPBoot.turbo(turbo);
+            turbo |= DPBoot.tier >= 2;                             // #35: the screen got expensive -> same minimal layout on its own
+            int bgMode = term ? 4 : turbo ? (DPBootSettings.bg() == 4 ? 4 : 1) : DPBootSettings.bg();      // #24 background modes (Settings button)
+            if (bgMode == 2) DPBootBackdrop.aurora(w, h);
+            else if (bgMode == 4) DPBootBackdrop.dark(w, h);
+            else if (bgMode != 3 || !DPBootBackdrop.slideshow(w, h)) drawWallpaper(w, h);
 
             // ---- progress: phase-weighted + monotonic so it goes 0->100, never bounces ----
             int progress = Math.round(updateProgress());
+            if (!term && !turbo && DPBootSettings.on("sunrise", true))   // #25 night -> dawn -> day as it loads, rain while stuck
+                DPBootBackdrop.sky(w, h, progress, DPBoot.stalled, DPBoot.serious);
+            if (!term && !turbo && DPBootSettings.on("visualizer", true)) { DPBootUI.vizUpdate(); DPBootBackdrop.pulse(w, h, DPBootUI.bass); }   // #27
             String status = currentStatus();
             pushLog(status);   // build the scrolling log from live mod-loading status (no log4j needed)
 
@@ -107,9 +114,32 @@ public final class DPSplashHook {
             int memPct = maxMem > 0 ? (int) Math.max(0, Math.min(100, 100L * usedMem / maxMem)) : 0;
 
             // ---- DogPound logo (same art / size / position as the main menu) ----
-            drawLogo(w, h);
+            if (!term && DPBootSettings.show("logo")) drawLogo(w, h);
 
             // ---- green see-through box: MEMORY bar stacked on the game-LOAD bar + live log ----
+            // her 8K screen 10-02: the box was capped at 820 REAL px = a sliver. Draw it in scaled units instead.
+            // small window (< 1600 px wide, e.g. her ~1300x720): compact layout at the GUI scale so text is readable;
+            // big windows keep the full layout scaled by height
+            int layout = DPBootSettings.getInt("layout", 0);       // Options > Loading Screen: 0 auto, 1 always compact, 2 always full
+            boolean compact = layout == 1 || (layout == 0 && w < 1600);
+            DPBootUI.compact = compact;
+            int bs = compact ? guiScale(w, h) : Math.max(1, h / 720);
+            DPBootUI.clipScale = bs;
+            DPBootUI.clipRealH = h;
+            GL11.glPushMatrix();
+            GL11.glScalef(bs, bs, 1f);
+            DPBootUI.input(bs, h);   // drain mouse + keyboard once per frame (h is still real pixels here)
+            w /= bs; h /= bs;
+            DPBootUI.musicButtonClick(w);   // the Music ON/OFF switch gets its click before anything else
+            if (term) {
+                DPBoot.tick(progress);
+                DPBootTerminal.draw(w, h, progress, LOG, logCount);
+                if (DPBootUI.button(10, 10, 52, 12, "Settings", DPBootSettings.open)) DPBootSettings.open = !DPBootSettings.open;
+                DPBootSettings.draw(w / 6, 30, w * 2 / 3, h - 80);
+            } else if (compact) {
+                try { DPBootCompact.draw(w, h, bs, progress, memPct, LOG, logCount); }
+                catch (Throwable t) { panelErr(t); }
+            } else {
             int boxW = Math.min(w - 60, 820);
             int bx = (w - boxW) / 2;
             int top = (int) (h * 0.56);
@@ -122,75 +152,87 @@ public final class DPSplashHook {
             rect(bx, top, bx + boxW, bottom, BOX_FILL);
             // green border as a 2px OUTLINE only (a filled rect here was the opaque slab
             // that made the box look solid no matter the fill alpha)
-            rect(bx - 2, top - 2, bx + boxW + 2, top,        GREEN);  // top
-            rect(bx - 2, bottom,  bx + boxW + 2, bottom + 2, GREEN);  // bottom
-            rect(bx - 2, top - 2, bx,            bottom + 2, GREEN);  // left
-            rect(bx + boxW, top - 2, bx + boxW + 2, bottom + 2, GREEN); // right
+            rect(bx - 2, top - 2, bx + boxW + 2, top,        DPBootUI.PINK);  // top
+            rect(bx - 2, bottom,  bx + boxW + 2, bottom + 2, DPBootUI.PINK);  // bottom
+            rect(bx - 2, top - 2, bx,            bottom + 2, DPBootUI.PINK);  // left
+            rect(bx + boxW, top - 2, bx + boxW + 2, bottom + 2, DPBootUI.PINK); // right
 
             // memory bar (top)
             rect(bx, memTop, bx + boxW, memTop + BAR_H, GREEN_DIM);           // track
-            int memFill = (int) (boxW * (memPct / 100.0));
-            if (memFill > 0) rect(bx, memTop, bx + memFill, memTop + BAR_H, GREEN);
+            int memFill = DPBootSettings.show("membar") ? (int) (boxW * (memPct / 100.0)) : 0;
+            if (memFill > 0) rect(bx, memTop, bx + memFill, memTop + BAR_H, DPBootUI.PINK);
             // game-load bar (under it)
             rect(bx, loadTop, bx + boxW, loadTop + BAR_H, GREEN_DIM);         // track
             int fill = (int) (boxW * (Math.max(1, Math.min(100, progress)) / 100.0));
-            if (fill > 0) rect(bx, loadTop, bx + fill, loadTop + BAR_H, GREEN);
+            if (fill > 0) rect(bx, loadTop, bx + fill, loadTop + BAR_H, DPBootUI.PINK);
 
             // ---- text (white + shadow = always readable) ----
             GL11.glColor4f(1f, 1f, 1f, 1f);
             GL11.glEnable(GL11.GL_TEXTURE_2D);
-            FontRenderer font = splashFont(fr);
-            if (font != null) {
+            {   // text uses DPBootFont: the splash thread must never use a FontRenderer (shared Tessellator, 172 MB crash)
                 // label inside the MEMORY bar
-                font.drawStringWithShadow("MEMORY " + memPct + "%", bx + 4, memTop + 1, WHITE);
+                if (DPBootSettings.show("membar")) DPBootUI.text("MEMORY " + memPct + "%", bx + 4, memTop + 1, WHITE);
                 // label inside the LOAD bar
-                font.drawStringWithShadow("LOAD " + progress + "%", bx + 4, loadTop + 1, WHITE);
-                String eta = DPEta.text();                                   // Zoomies' "about 3m 20s left"
-                if (eta != null) font.drawStringWithShadow(eta, bx + boxW - 4 - font.getStringWidth(eta), loadTop + 1, WHITE);
+                DPBootUI.text("LOAD " + progress + "%", bx + 4, loadTop + 1, WHITE);
+                String eta = DPBoot.etaShort;                                // Zoomies' or the learned "about 3m 20s left"
+                if (eta != null && DPBootSettings.show("eta")) DPBootUI.text(eta, bx + boxW - 4 - DPBootUI.width(eta), loadTop + 1, WHITE);
 
-                // scrolling log inside the box — white + shadow so it's readable on the wallpaper
-                int logTop = loadTop + BAR_H + 3;
-                int avail = bottom - logTop;
-                int rows = Math.max(1, avail / LINE_H);
-                List<String> lines = recentLog(rows);
-                int ly = logTop;
-                if (lines.isEmpty()) {
-                    font.drawStringWithShadow("Loading…", bx + 5, ly, WHITE);
-                } else {
-                    for (String ln : lines) {
-                        font.drawStringWithShadow(font.trimStringToWidth(ln, boxW - 10), bx + 5, ly, WHITE);
-                        ly += LINE_H;
-                    }
-                }
+                // #4 log with filter chips + search, inside the box
+                if (DPBootSettings.show("log")) DPBootUI.logPanel(bx + 5, loadTop + BAR_H + 3, boxW - 10, bottom, LOG, logCount);
             }
+
+
+            // ---- Pride Boot Sequence panels (her 36-point list) ----
+            try {   // a panel bug must never take the Music switch (drawn after this) or the box down with it
+            DPBoot.tick(progress);
+            int col = DPBootUI.colW(w);
+            int topL = Math.max(10, 264 / bs);              // keep the top-left corner clear for a MangoHud overlay (~280x260 px)
+            int ly = DPBootSettings.show("dash") ? DPBootUI.dashboard(10, topL, col) : topL + 16;
+            boolean turboSet = DPBootSettings.on("turbo", false);
+            if (DPBootUI.button(10 + col - 96, topL + 3, 40, 11, "Turbo", turboSet)) DPBootSettings.set("turbo", !turboSet);
+            if (DPBootUI.button(10 + col - 52, topL + 3, 48, 11, "Settings", DPBootSettings.open)) { DPBootSettings.open = !DPBootSettings.open; if (DPBootSettings.open) { DPBootGames.game = -1; DPBootViews.view = -1; } }
+            if (!turbo) {                                   // Turbo keeps only the dashboard, the box and the cards
+            // each column on its own: one panel failing must never take the others down
+            try {
+                if (DPBootSettings.show("slowest")) ly = DPBootUI.slowest(10, ly + 6, col);
+                if (DPBootSettings.show("games")) ly = DPBootUI.gamesPanel(10, ly + 6, col);
+                DPBootUI.clip(10, ly + 6, col, Math.max(0, top - 8 - ly - 6));
+                try { if (DPBootSettings.show("news")) DPBootUI.whatsNew(10, ly + 6, col, top - 8); } finally { DPBootUI.unclip(); }
+            } catch (Throwable t) { panelErr(t); }
+            try { DPBootUI.tip(w, bottom + 10); } catch (Throwable t) { panelErr(t); }   // #14 context-aware tips under the box
+            try {
+                int ry = DPBootSettings.show("player") ? DPBootUI.music(w - col - 10, 10 + DPBootUI.MUSIC_BTN_H + 4, col) : 10 + DPBootUI.MUSIC_BTN_H - 2;   // #10 music player, under the Music ON/OFF switch
+                DPBootUI.clip(w - col - 10, ry + 6, col, Math.max(0, top - 8 - ry - 6));
+                try { if (DPBootSettings.show("system")) DPBootUI.rightColumn(w - col - 10, ry + 6, col); } finally { DPBootUI.unclip(); }   // System / JVM / Threads tabs
+            } catch (Throwable t) { panelErr(t); }
+            } else DPBootUI.text("Turbo: 10 fps, still picture, side panels off - loading gets the CPU", 10, ly + 6, DPBootUI.DIM);
+            int midX = 10 + col + 12, midW = w - 2 * col - 44;
+            if (midW > 160) try {
+                if (!DPBootUI.safeAsk(midX, 10, midW) && !DPBootSettings.draw(midX, 10, midW, top - 18) && !DPBootViews.draw(midX, 10, midW, top - 18) && !DPBootGames.draw(midX, 10, midW, top - 18))   // settings or a mini game cover the middle while open
+                    { int pb = DPBootSettings.show("problems") ? DPBootUI.problems(midX, midW, top - 8) : top - 8; if (DPBootSettings.show("stall")) DPBootUI.stall(midX, midW, pb); }   // #5 problem cards above the box, #6 stall card above those
+            } catch (Throwable t) { panelErr(t); }
+            if (DPBootSettings.show("toasts")) DPBootViews.toasts(w - 10, top - 6);   // #30 achievement toasts slide in above the box, right side
+            } catch (Throwable t) { panelErr(t); }
+            }   // end of the dashboard layout (not terminal)
+            try { if (DPBootSettings.show("themefx")) DPBootTheme.overlay(w, h); } catch (Throwable ignored) { }   // CRT scanlines / Matrix rain
+            DPBootUI.musicButtonDraw(w);    // drawn last: always on top, never covered
 
             GL11.glColor4f(1f, 1f, 1f, 1f);
             GL11.glDisable(GL11.GL_TEXTURE_2D);
+            GL11.glPopMatrix();   // the box scale
             GL11.glPopMatrix();
         } catch (Throwable t) {
             if (!loggedErr) { loggedErr = true; System.out.println("[DogPound] native splash ERROR: " + t); }
+        } finally {
+            DPBoot.frameEnd();   // #35: cap the splash FPS + measure our own cost
         }
     }
 
-    private static FontRenderer SPLASH_FR = null;
-    private static boolean SPLASH_FR_TRIED = false;
-    // Forge runs the boot splash on its own GL context where the normal FontRenderer is
-    // unusable, but its private static SplashFontRenderer IS bound there. The transformer
-    // could not find the accessor (passes null), so fetch it by reflection -> log/text draws.
-    private static FontRenderer splashFont(FontRenderer passed) {
-        if (passed != null) return passed;
-        if (!SPLASH_FR_TRIED) {
-            SPLASH_FR_TRIED = true;
-            try {
-                Class<?> sp = Class.forName("net.minecraftforge.fml.client.SplashProgress");
-                java.lang.reflect.Field f = sp.getDeclaredField("fontRenderer");
-                f.setAccessible(true);
-                Object o = f.get(null);
-                if (o instanceof FontRenderer) SPLASH_FR = (FontRenderer) o;
-            } catch (Throwable t) { /* leave null -> box still draws */ }
-        }
-        return SPLASH_FR;
+    private static void panelErr(Throwable t) {
+        try { GL11.glDisable(GL11.GL_SCISSOR_TEST); } catch (Throwable ignored) { }
+        if (!loggedPanelErr) { loggedPanelErr = true; System.out.println("[Pride UI] loading-screen panel error: " + t); t.printStackTrace(); }
     }
+
 
     // ---- DogPound brand logo (textures/gui/logo.png) — identical art the main menu uses ----
     private static int logoTex = 0;       // 0=untried, -1=failed, >0=GL id
@@ -268,10 +310,12 @@ public final class DPSplashHook {
     private static void drawWallpaper(int w, int h) {
         try {
             if (bgFrames == null) bgFrames = new int[BG_COUNT];
-            int idx = (int) ((System.currentTimeMillis() / BG_FRAME_MS) % BG_COUNT);
+            int idx = DPBoot.lowQuality || DPBoot.turbo || DPBootSettings.bg() == 1 ? 0 : (int) ((System.currentTimeMillis() / BG_FRAME_MS) % BG_COUNT);   // #35 still frame when we're expensive
             int tex = bgFrames[idx];
             if (tex == 0) {                       // not tried yet -> load this frame now
+                long d0 = System.nanoTime();
                 tex = loadFrame(idx + 1);         // files are 1-based: f001..f060
+                DPBoot.excludeNs += System.nanoTime() - d0;
                 bgFrames[idx] = (tex > 0 ? tex : -1);
             }
             if (tex <= 0) {                        // this frame failed -> fall back to frame 1

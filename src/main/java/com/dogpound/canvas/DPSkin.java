@@ -105,6 +105,7 @@ public final class DPSkin {
                 label = ((net.minecraft.client.gui.GuiLockIconButton) b).isLocked() ? "Difficulty Locked" : "Lock Difficulty";
             DPButton n = new DPButton(b.id, b.x, b.y, b.width, b.height, label);
             n.autoFlat = true;
+            if (b.getClass() != GuiButton.class && !(b instanceof net.minecraft.client.gui.GuiLockIconButton)) n.orig = b;   // mod button: keep its own click code
             copy(b, n);
             return n;
         } catch (Throwable t) {

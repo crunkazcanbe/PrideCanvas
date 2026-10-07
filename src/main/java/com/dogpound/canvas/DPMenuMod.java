@@ -29,18 +29,43 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class DPMenuMod {
     public static final String MODID = "dpcanvas";
 
+    // Loading screen data, copied on the MAIN thread (the splash thread may never touch Forge objects / registries)
+    @Mod.EventHandler
+    public void preInit(net.minecraftforge.fml.common.event.FMLPreInitializationEvent e) { DPBootPreload.title(); DPBootMain.snapshotMods(); }
+
+    @Mod.EventHandler
+    public void postInit(net.minecraftforge.fml.common.event.FMLPostInitializationEvent e) { DPBootPreload.title(); DPBootMain.countRegistries(); }
+
+    @Mod.EventHandler
+    public void loadComplete(net.minecraftforge.fml.common.event.FMLLoadCompleteEvent e) { DPBootPreload.title(); DPBootMain.countRegistries(); }
+
     @Mod.EventHandler
     public void init(FMLInitializationEvent e) {
+        DPBootMain.countRegistries();
         MinecraftForge.EVENT_BUS.register(this);
+        DPMenuTheme.apply(DPConfig.menuTheme);   // pack-wide menu colours (Esc / Options > Themes)
         DPIcon.apply();          // Pride window icon + "Pride" title bar
         DPLogBuffer.install();   // capture log lines for the loading-screen box
         MinecraftForge.EVENT_BUS.register(new DPResizeFix());   // window resize -> black world, patched here
+        MinecraftForge.EVENT_BUS.register(new DPToasts());
+        MinecraftForge.EVENT_BUS.register(new DPAdvancements.Hook());
+        MinecraftForge.EVENT_BUS.register(new DPCrosshair());
+        MinecraftForge.EVENT_BUS.register(new DPSysMonitor.Overlay());   // corner readout (System Monitor)       // Pride Crosshair + fancy block outline // L key -> Pride advancement list      // top-right pop-ups she switched off (Config → Pop-ups)
         DPPatcherKey.register();                                  // PolyPatcher's menu on a key that actually works
         MinecraftForge.EVENT_BUS.register(new DPPatcherKey());
         MinecraftForge.EVENT_BUS.register(new DPPrompts());
         MinecraftForge.EVENT_BUS.register(new DPTransition());
         DPCommand.register();
         MinecraftForge.EVENT_BUS.register(new DPMenuScale());
+        MinecraftForge.EVENT_BUS.register(new DPWorkingScreen());       // no vanilla % box between our loading screens
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(DPHud.KEY);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(DPHud.PAGE_LEFT);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(DPHud.PAGE_RIGHT);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(DPHud.BIGGER);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(DPHud.SMALLER);
+        MinecraftForge.EVENT_BUS.register(new DPHud());
+        MinecraftForge.EVENT_BUS.register(new DPMouse());                // Rival 700 vibration (pridemouse helper)                  // Pride HUD strip: every HUD in one bar
+        MinecraftForge.EVENT_BUS.register(new DPDhSettings.Opener());   // Distant Horizons settings as a Pride menu
         MinecraftForge.EVENT_BUS.register(new DPBoxLayout());                     // sub-menus in an Esc-sized box                     // after DPMenuMod's own GuiOpenEvent handler                    // every screen glides in; game fades back in                       // popups -> pride-prompts/ so Claude can see + answer
         // PRELOAD the loading-screen classes NOW, while the classloader is healthy.
         // The coremod injects a call to DPLoadingHook into LoadingScreenRenderer; if
@@ -65,7 +90,11 @@ public class DPMenuMod {
 
         boolean onMenu = Minecraft.getMinecraft().world == null;
 
-        // her ask 2026-09-28: go straight into the world after loading (once per launch, Shift skips)
+        if (gui instanceof GuiMainMenu) {                 // loading screen #3/#15: boot time -> history + "why so long?" report
+            try { DPBoot.finish(); } catch (Throwable t) { System.out.println("[Pride UI] boot stats skipped: " + t); }   // never break opening a screen
+        }
+
+        // Requested: go straight into the world after loading (once per launch, Shift skips)
         if (onMenu && gui instanceof GuiMainMenu && !autoTried) {
             autoTried = true;
             if (DPConfig.autoLoadWorld && !org.lwjgl.input.Keyboard.isKeyDown(org.lwjgl.input.Keyboard.KEY_LSHIFT)
@@ -99,6 +128,15 @@ public class DPMenuMod {
         // Options + Video Settings are the Pride versions in-game too (they go back to whatever opened them)
         if (DPConfig.enableMenu && !onMenu && gui.getClass() == GuiOptions.class) {
             event.setGui(new DPOptions(field(gui, GuiOptions.class, "field_146441_g", null), Minecraft.getMinecraft().gameSettings));
+            return;
+        }
+        // Skin + Chat settings as Pride tile panels (requested feature), from the title screen and in-game alike
+        if (DPConfig.enableMenu && gui.getClass() == net.minecraft.client.gui.GuiCustomizeSkin.class) {
+            event.setGui(new DPSubMenus.Skin(screenField(gui)));
+            return;
+        }
+        if (DPConfig.enableMenu && gui.getClass() == net.minecraft.client.gui.ScreenChatOptions.class) {
+            event.setGui(new DPSubMenus.Chat(screenField(gui), Minecraft.getMinecraft().gameSettings));
             return;
         }
         if (DPConfig.enableMenu && !onMenu && gui.getClass() == GuiVideoSettings.class) {
@@ -153,6 +191,15 @@ public class DPMenuMod {
     }
 
     /** Read a settings screen's parent screen (field_146498_f on GuiVideoSettings), best-effort. */
+    /** the screen a vanilla sub-menu goes back to: its one GuiScreen field (no name lookups needed) */
+    private static GuiScreen screenField(GuiScreen gui) {
+        for (java.lang.reflect.Field f : gui.getClass().getDeclaredFields()) {
+            if (!GuiScreen.class.isAssignableFrom(f.getType())) continue;
+            try { f.setAccessible(true); Object p = f.get(gui); if (p instanceof GuiScreen) return (GuiScreen) p; } catch (Throwable ignored) {}
+        }
+        return new DPOptions(new DPMainMenu(), Minecraft.getMinecraft().gameSettings);
+    }
+
     private static GuiScreen parentOf(GuiScreen gui) {
         try {
             java.lang.reflect.Field f = gui.getClass().getDeclaredField("field_146498_f");

@@ -20,7 +20,7 @@ import net.minecraftforge.fml.relauncher.Side;
 import java.util.Random;
 
 /**
- * The game side of Pride music (her ask 2026-10-01: "several different songs for while you're playing").
+ * The game side of Pride music (requested feature).
  *  - keeps the loading/menu player (DPMusic) in step with the Master × Music sliders, fades it when a world loads,
  *    and starts it again when she's back on the main menu after quitting a world
  *  - mutes vanilla menu music while ours plays (no two songs at once)
@@ -52,6 +52,7 @@ public final class DPMusicGame {
         if (e.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.gameSettings == null) return;
+        DPMusicPause.holdSilent();                       // "Music: OFF" holds the Music slider at 0
         boolean player = DPMusic.playing();
         if (player) DPMusic.setVolume(mc.gameSettings.getSoundLevel(SoundCategory.MASTER) * mc.gameSettings.getSoundLevel(SoundCategory.MUSIC));
         boolean mainMenu = mc.currentScreen != null && mc.currentScreen.getClass().getSimpleName().contains("MainMenu");
@@ -65,14 +66,26 @@ public final class DPMusicGame {
         } else {
             current = null;
             if (mainMenu && !DPConfig.menuMusic && player) DPMusic.fadeOut(2500);
-            else if (mainMenu && wasInWorld && DPConfig.menuMusic && !player) { wasInWorld = false; DPMusic.start(DPMusic.LOADING_PLAYLIST); }
+            else if (mainMenu && wasInWorld && DPConfig.menuMusic && !player && !DPMusicPause.paused()) { wasInWorld = false; DPMusic.start(DPMusic.LOADING_PLAYLIST); }
         }
     }
+
+    private static final java.util.Set<String> LOGGED = new java.util.HashSet<>();
 
     @SubscribeEvent
     public static void onSound(PlaySoundEvent e) {
         ISound s = e.getSound();
-        if (s == null || !"minecraft".equals(s.getSoundLocation().getResourceDomain())) return;
+        if (s == null) return;
+        // "Music: OFF" means ALL music, from any mod, any time — including mods that start their own songs while the
+        // game is still loading (her report 2026-10-03: a second, scary song took over halfway through boot and the
+        // button couldn't stop it). Music = the MUSIC/RECORDS category or a sound whose name says music/song/theme.
+        if (DPMusicPause.paused() && isMusic(s)) {
+            String id = s.getSoundLocation().toString();
+            if (LOGGED.add(id)) System.out.println("[DogPound] Music OFF: blocked " + id);
+            e.setResultSound(null);
+            return;
+        }
+        if (!"minecraft".equals(s.getSoundLocation().getResourceDomain())) return;
         String path = s.getSoundLocation().getResourcePath();
         if (!path.startsWith("music.")) return;
         if (DPMusic.playing()) { e.setResultSound(null); return; }   // our loading/menu song is still going
@@ -92,6 +105,17 @@ public final class DPMusicGame {
         current = PositionedSoundRecord.getMusicRecord(pick);
         currentDim = p.dimension;
         e.setResultSound(current);
+    }
+
+    /** Background music only. Jukebox discs (RECORDS) are gameplay and keep playing; the name check is only a fallback
+     *  for mod sounds that can't report a category yet. */
+    private static boolean isMusic(ISound s) {
+        try {
+            net.minecraft.util.SoundCategory c = s.getCategory();
+            if (c != null) return c == net.minecraft.util.SoundCategory.MUSIC;
+        } catch (Throwable ignored) {}
+        String p = s.getSoundLocation().getResourcePath().toLowerCase(java.util.Locale.ROOT);
+        return p.startsWith("music") || p.contains(".music") || p.contains("soundtrack");
     }
 
     private static SoundEvent overworld(EntityPlayer p, World w) {

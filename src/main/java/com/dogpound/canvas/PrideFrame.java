@@ -12,16 +12,16 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import org.lwjgl.opengl.GL11;
 
 /**
- * The one look every DogPound menu shares (her ask 2026-09-28: "all the menus consistent, look alike… centered…
- * even if you had to add a scroll bar" — modelled on PrideGuard's hub, the one she liked: dark panel, rainbow bar,
- * square tiles). Copied into each mod (same file, own package) so no mod needs another to run.
+ * The one look every DogPound menu shares (requested feature). Copied into each mod (same file, own package) so no mod needs another to run.
  *
  * Use: PrideFrame f = PrideFrame.fit(width, height);  f.draw(screen, "Title", "right side text");
  * then lay content out inside f.cx, f.cy, f.cw, f.ch (the area under the title bar).
  */
 public final class PrideFrame {
     public static final int[] RAINBOW = {0xFFE40303, 0xFFFF8C00, 0xFFFFED00, 0xFF008026, 0xFF24408E, 0xFF732982, 0xFF5BCEFA, 0xFFF5A9B8};
-    public static final int PINK = 0xFFF5A9B8, BLUE = 0xFF5BCEFA, DIM = 0xFF8A8499, TILE = 0xFF1C1530, TILE_ON = 0xFF6A3FA0, BUTTON = 0xFF2A2238;
+    // Not final on purpose: the pack-wide menu theme (DPMenuTheme) rewrites these and RAINBOW's contents at runtime.
+    public static int PINK = 0xFFF5A9B8, BLUE = 0xFF5BCEFA, DIM = 0xFF8A8499, TILE = 0xFF1C1530, TILE_ON = 0xFF6A3FA0, BUTTON = 0xFF2A2238;
+    public static int PANEL_TOP = 0xF2140E22, PANEL_BOTTOM = 0xF2080510, TILE_HOVER = 0xFF2A2140;
     public static final int HEADER = 30;                 // title bar height inside the panel
 
     public final int x, y, w, h;                         // the panel
@@ -57,7 +57,7 @@ public final class PrideFrame {
     /** Pride UI: same panel without dimming, so the moving title-screen wallpaper stays visible around it */
     public void drawOver(String title, String right) {
         FontRenderer fr = Minecraft.getMinecraft().fontRenderer;
-        gradient(x, y, x + w, y + h, 0xF2140E22, 0xF2080510);
+        gradient(x, y, x + w, y + h, PANEL_TOP, PANEL_BOTTOM);
         int sw = w / RAINBOW.length;
         for (int i = 0; i < RAINBOW.length; i++) Gui.drawRect(x + i * sw, y, i == RAINBOW.length - 1 ? x + w : x + (i + 1) * sw, y + 3, RAINBOW[i]);
         if (title != null) fr.drawStringWithShadow("§l✦ " + title, x + 10, y + 11, 0xFFFFFF);
@@ -67,7 +67,7 @@ public final class PrideFrame {
 
     /** a square tile like PrideGuard's hub: coloured top edge, lighter when hovered */
     public static void tile(int x, int y, int w, int h, int accent, boolean hover, boolean on) {
-        Gui.drawRect(x, y, x + w, y + h, on ? TILE_ON : hover ? 0xFF2A2140 : TILE);
+        Gui.drawRect(x, y, x + w, y + h, on ? TILE_ON : hover ? TILE_HOVER : TILE);
         Gui.drawRect(x, y, x + w, y + 2, accent);
     }
 

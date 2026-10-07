@@ -11,8 +11,7 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * The Pride website from inside the game (her ask 2026-09-30: "bring up the site in the escape menu… and on the
- * main menu"). With MCEF (in-game Chromium) working, the site opens right here in a Pride box with back / forward /
+ * The Pride website from inside the game (requested feature). With MCEF (in-game Chromium) working, the site opens right here in a Pride box with back / forward /
  * reload / home; without it, the Pride-coloured floating browser (~/bin/dpmod-browser --url … --half box) opens
  * centred over the game, and as a last resort the system browser.
  */

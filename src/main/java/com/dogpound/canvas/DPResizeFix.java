@@ -23,6 +23,7 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 public class DPResizeFix {
 
     private static int lastW = -1, lastH = -1;
+    private static int builtW = -1, builtH = -1;     // the size the chunk renderers were last built for
     private static long settleAt = 0L;
 
     @SubscribeEvent
@@ -36,6 +37,10 @@ public class DPResizeFix {
         Minecraft mc = Minecraft.getMinecraft();
         int w = mc.displayWidth, h = mc.displayHeight;
         if (w <= 0 || h <= 0) return;
+        if (builtW < 0) { builtW = w; builtH = h; }
+        // Minimized (or squashed to a sliver): don't rebuild for it. Rebuilding every chunk for the tiny size and then
+        // again for full size on restore ran the TR out of RAM and killed the game (2026-10-04, 01:08).
+        if (w < 320 || h < 200 || !visible()) { settleAt = 0L; return; }
 
         if (w != lastW || h != lastH) {
             lastW = w;
@@ -46,7 +51,15 @@ public class DPResizeFix {
 
         if (settleAt == 0L || System.currentTimeMillis() < settleAt) return;
         settleAt = 0L;
+        if (w == builtW && h == builtH) return;      // back to the size it already had (minimize → restore): nothing to fix
+        builtW = w; builtH = h;
         repair(mc, w, h);
+    }
+
+    private static boolean visibleBroken;
+    private static boolean visible() {
+        if (visibleBroken) return true;
+        try { return org.lwjgl.opengl.Display.isVisible(); } catch (Throwable t) { visibleBroken = true; return true; }   // Cleanroom's window shim may lack it
     }
 
     /** Rebuild the chunk renderers -- the one thing Minecraft's own resize() does NOT do.

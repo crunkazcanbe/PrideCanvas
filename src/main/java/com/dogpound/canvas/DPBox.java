@@ -9,9 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Every sub-menu as a box in the middle, like the Pride pause menu (her ask 2026-09-30: "make all these menus
- * small like the escape menu, a little box in the center with all the options in it… so you can still see the
- * background of Minecraft"). The box is measured from what the screen really has — its visible buttons and its
+ * Every sub-menu as a box in the middle, like the Pride pause menu (requested feature). The box is measured from what the screen really has — its visible buttons and its
  * lists — so it fits any vanilla or mod screen without knowing its layout. Lists draw their glass and their
  * edge strips inside the box only (DPHooks), so the world/wallpaper shows everywhere outside it.
  */

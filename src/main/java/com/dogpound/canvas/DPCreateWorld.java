@@ -90,13 +90,30 @@ public class DPCreateWorld extends GuiCreateWorld {
                     if (b instanceof DPButton) { ((DPButton) b).flat = true; ((DPButton) b).sound(b.id == CREATE ? DPSounds.CONFIRM : DPSounds.BACK); }
                     break;
                 }
-                default:                                                         // a mod's extra button: tile row under ours
+                default:                                                         // a mod's extra button: row above Create
+            }
+        }
+        // mods' own buttons (Chunk Pregenerator's "Preview", OreSpawn...) used to float wherever the mod put them
+        java.util.List<GuiButton> extra = new java.util.ArrayList<>();
+        for (GuiButton b : buttonList)
+            if (b.id < MORE_MIN_ID || b.id > MORE_MAX_ID) extra.add(b);
+        if (!extra.isEmpty()) {
+            int ew = Math.min(130, (w - (extra.size() - 1) * gap) / extra.size()), ey = f.cy + f.ch - 22 - gap - 20;
+            for (int i = 0; i < extra.size(); i++) {
+                GuiButton b = extra.get(i);
+                b.x = x + i * (ew + gap); b.y = ey; b.width = ew; b.height = 20;
+                if (b instanceof DPButton) ((DPButton) b).flat = true;
             }
         }
     }
 
+    /** vanilla Create World uses button ids 0..8; anything else belongs to a mod */
+    private static final int MORE_MIN_ID = 0, MORE_MAX_ID = 8;
+    private int laidOut = -1;
+
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
+        if (button.id == CREATE && button.enabled && openOtgPresets()) return;
         super.actionPerformed(button);
         if (this.mc.currentScreen != this) return;
         if (more() != lastMore) { lastMore = more(); pageAt = DPAnim.now(); }
@@ -106,6 +123,7 @@ public class DPCreateWorld extends GuiCreateWorld {
     // ------------------------------------------------------------------ drawing (vanilla's drawScreen is never called)
     @Override
     public void drawScreen(int mx, int my, float pt) {
+        if (buttonList.size() != laidOut) { laidOut = buttonList.size(); layout(); } // mods add buttons after initGui
         DPBackdrop.draw(this.mc, this.width, this.height);
         DPChrome.drawBrand(this.mc, this.width);
         if (DPConfig.sparkles && this.mc.world == null) DPAnim.sparkles(this.width, this.height, 22);
@@ -221,6 +239,32 @@ public class DPCreateWorld extends GuiCreateWorld {
             tx += tw + 4;
         }
         super.mouseClicked(mx, my, button);
+    }
+
+    /**
+     * World type OTG: a plain create skips OTG's preset picker, so the world has no preset and crashes on load
+     * ("missing OTG information"). OTG's own world list normally opens the picker; we replace that list, so do it here.
+     */
+    private boolean openOtgPresets() {
+        Object idx = get("selectedIndex", "field_146331_K");
+        if (!(idx instanceof Integer)) return false;
+        net.minecraft.world.WorldType t = net.minecraft.world.WorldType.WORLD_TYPES[(Integer) idx];
+        if (t == null || !"OTG".equals(t.getName())) return false;
+        try {
+            // OTG only learns "we're on the main menu" when vanilla's GuiWorldSelection opens, which ours replaces.
+            // Without it, OTG's dimension screen reads the (null) settings of a running world and crashes.
+            Class.forName("com.pg85.otg.forge.gui.GuiHandler").getField("IsInMainMenu").setBoolean(null, true);
+            Class.forName("com.pg85.otg.OTG").getMethod("setDimensionsConfig", Class.forName("com.pg85.otg.configuration.dimensions.DimensionsConfig"))
+                    .invoke(null, new Object[]{null});
+            Object parent = get("parentScreen", "field_146332_f");
+            GuiScreen gui = (GuiScreen) Class.forName("com.pg85.otg.forge.gui.presets.OTGGuiPresetList")
+                    .getConstructor(GuiScreen.class).newInstance(parent);
+            this.mc.displayGuiScreen(gui);
+            return true;
+        } catch (Throwable e) {
+            System.out.println("[PrideCanvas] OTG preset list unavailable: " + e);
+            return false;
+        }
     }
 
     // ------------------------------------------------------------------ reflection helpers (vanilla's private state)

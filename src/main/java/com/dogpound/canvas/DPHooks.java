@@ -58,8 +58,7 @@ public final class DPHooks {
 
     /**
      * GuiScreen.drawWorldBackground (in-game "darken the world behind this screen"). For our sub-menus the game
-     * stays completely clear, like the Pride pause menu (her ask 2026-09-30: "I don't want to see the purple
-     * background… clear, same as if I'm playing, in a box"): skip the darkening, but still post the background
+     * stays completely clear, like the Pride pause menu (requested feature): skip the darkening, but still post the background
      * event so the box (and any mod listening) draws. Title screen / other mods' screens: vanilla as usual.
      */
     public static boolean worldBackground(net.minecraft.client.gui.GuiScreen g) {

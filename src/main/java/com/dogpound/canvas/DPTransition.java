@@ -14,8 +14,7 @@ import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * Screen transitions for EVERY screen, ours or any mod's (her ask 2026-09-30: "smooth transitions and animations
- * for everything"). Purely visual: while a screen is new (~0.25 s) it is drawn slightly smaller and lower, easing
+ * Screen transitions for EVERY screen, ours or any mod's (requested feature). Purely visual: while a screen is new (~0.25 s) it is drawn slightly smaller and lower, easing
  * into place, under a fading veil. Mouse positions aren't touched — by the time anyone clicks it's in place.
  * When a menu closes, the game fades back in instead of snapping. Chat is never animated; inventories only if on.
  */
@@ -32,7 +31,7 @@ public final class DPTransition {
         if (g instanceof GuiChat || g instanceof DPPauseMenu || g instanceof DPMainMenu) return false;   // chat instant; ours animate themselves
         if (g instanceof GuiContainer && !DPConfig.transitionContainers) return false;
         String n = g.getClass().getName();
-        return !n.contains("GuiDownloadTerrain") && !n.contains("GuiConnecting") && !n.contains("Loading");
+        return !n.contains("GuiDownloadTerrain") && !n.contains("GuiScreenWorking") && !n.contains("GuiConnecting") && !n.contains("Loading");
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)

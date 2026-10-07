@@ -15,8 +15,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Sub-menus in an Esc-menu-sized box (her ask 2026-09-30: "their little box in the center, not stretching all the
- * way up and down the screen — the same size box as the one you made for the escape menu").
+ * Sub-menus in an Esc-menu-sized box (requested feature).
  *
  * The screen is told it is only box-sized (width/height set in InitGuiEvent.Pre, before its initGui runs), so
  * vanilla's own layout code — lists, buttons, titles — arranges everything inside the box. It is then drawn

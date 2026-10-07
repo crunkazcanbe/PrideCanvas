@@ -8,8 +8,7 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.EntityLivingBase;
 
 /**
- * Your real 3D character that you can grab and spin (her ask 2026-09-30: "grab it with your mouse and spin it
- * around and see your whole body"). Drag = turn (left/right) and tilt (up/down); let go and it keeps spinning a
+ * Your real 3D character that you can grab and spin (requested feature). Drag = turn (left/right) and tilt (up/down); let go and it keeps spinning a
  * little, slowing down; scroll = zoom; idle = a gentle sway. Same rendering as the inventory's player, but the
  * angles are ours instead of following the mouse.
  */

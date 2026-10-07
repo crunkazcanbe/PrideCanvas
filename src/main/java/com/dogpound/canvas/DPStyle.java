@@ -21,13 +21,13 @@ public final class DPStyle {
     private DPStyle() {}
 
     // ─────────────────────────────────────────────────────────── palette
-    public static final int BLUE   = 0x5BCEFA;   // trans flag blue
-    public static final int PINK   = 0xF5A9B8;   // trans flag pink
+    public static int BLUE   = 0x5BCEFA;   // trans flag blue
+    public static int PINK   = 0xF5A9B8;   // trans flag pink
     public static final int WHITE  = 0xFFFFFF;
-    public static final int ROSE   = 0xE0629B;   // her Waybar pink, for accents
-    public static final int DEEP   = 0x16092F;   // theme background, top
-    public static final int MID    = 0x2B1745;   // theme background, bottom
-    public static final int VIOLET = 0x3D2168;   // lifted purple for hover fills
+    public static int ROSE   = 0xE0629B;   // her Waybar pink, for accents
+    public static int DEEP   = 0x16092F;   // theme background, top
+    public static int MID    = 0x2B1745;   // theme background, bottom
+    public static int VIOLET = 0x3D2168;   // lifted purple for hover fills
 
     /** The flag, top to bottom. Used for stripe accents and the progress bars. */
     public static final int[] FLAG = { BLUE, PINK, WHITE, PINK, BLUE };

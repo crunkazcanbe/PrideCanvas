@@ -49,6 +49,10 @@ public class DPTransformer implements IClassTransformer {
             if ("net.minecraft.client.gui.GuiSlot".equals(transformedName)) {
                 return patchSlot(basicClass);
             }
+            if ("net.minecraft.world.gen.ChunkProviderServer".equals(transformedName)
+                    && net.minecraftforge.fml.relauncher.FMLLaunchHandler.side().isClient()) {   // singleplayer only; dedicated servers never get it
+                return patchCancelHook(basicClass);
+            }
             if ("alexiil.mc.mod.load.CustomLoadingScreen".equals(transformedName)) {
                 return forceDarkMode(basicClass);
             }
@@ -59,6 +63,25 @@ public class DPTransformer implements IClassTransformer {
             System.out.println("[DogPound] transform skipped (safe): " + t);
         }
         return basicClass;
+    }
+
+    /** ChunkProviderServer.provideChunk(II) (SRG func_186025_d): call DPWorldCancel.check() first, so the
+     *  loading-screen Cancel button can stop a world that's generating chunks (requested feature). */
+    private byte[] patchCancelHook(byte[] basic) {
+        ClassReader cr = new ClassReader(basic);
+        ClassNode cn = new ClassNode();
+        cr.accept(cn, 0);
+        boolean hit = false;
+        for (MethodNode m : cn.methods) {
+            if (!(m.name.equals("func_186025_d") || m.name.equals("provideChunk")) || !m.desc.equals("(II)Lnet/minecraft/world/chunk/Chunk;")) continue;
+            m.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/dogpound/canvas/DPWorldCancel", "check", "()V", false));
+            hit = true;
+        }
+        if (!hit) return basic;
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        cn.accept(cw);
+        System.out.println("[DogPound] world-load Cancel hook added");
+        return cw.toByteArray();
     }
 
     // Force Forge/Cleanroom SplashProgress's backgroundColor to DogPound dark-green.
@@ -73,9 +96,13 @@ public class DPTransformer implements IClassTransformer {
         ClassReader cr = new ClassReader(basic);
         ClassNode cn = new ClassNode();
         cr.accept(cn, 0);
-        boolean hit = false;
+        boolean hit = false, preload = false;
         for (MethodNode m : cn.methods) {
             if (!"start".equals(m.name) || !"()V".equals(m.desc)) continue;
+            // Pride loading screen: load every class the splash thread will use HERE, on the main thread, before the
+            // splash thread exists - first-time class loads on the splash thread raced Mixin (CME crash, 2026-10-05)
+            m.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, "com/dogpound/canvas/DPBootPreload", "run", "()V", false));
+            preload = true;
             for (AbstractInsnNode insn = m.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (insn instanceof FieldInsnNode) {
                     FieldInsnNode fi = (FieldInsnNode) insn;
@@ -93,10 +120,8 @@ public class DPTransformer implements IClassTransformer {
                 }
             }
         }
-        if (!hit) {
-            System.out.println("[DogPound] SplashProgress.backgroundColor not found — splash unchanged");
-            return basic;
-        }
+        if (!hit) System.out.println("[DogPound] SplashProgress.backgroundColor not found — background unchanged");
+        if (!hit && !preload) return basic;
         ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
         cn.accept(cw);
         return cw.toByteArray();
@@ -231,12 +256,52 @@ public class DPTransformer implements IClassTransformer {
     /** ClassWriter whose getCommonSuperClass never fails (avoids classload crashes at transform time). */
     private static final class SafeClassWriter extends ClassWriter {
         SafeClassWriter(ClassReader cr, int flags) { super(cr, flags); }
+        /** Walks the class hierarchy by READING class files, never loading classes: loading one here re-entered
+         *  Mixin's transformer when PolyPatcher/OneConfig were present ("Re-entrance error", 2026-10-05). */
         @Override
         protected String getCommonSuperClass(String type1, String type2) {
             try {
-                return super.getCommonSuperClass(type1, type2);
+                if (type1.equals(type2)) return type1;
+                java.util.List<String> a = chain(type1), b = chain(type2);
+                if (a == null || b == null) return "java/lang/Object";
+                for (String s : b) if (a.contains(s)) return s;
+            } catch (Throwable ignored) {}
+            return "java/lang/Object";
+        }
+
+        /** the type and its superclasses, or null for interfaces / unreadable types */
+        private static java.util.List<String> chain(String type) {
+            java.util.List<String> out = new java.util.ArrayList<>();
+            String t = type;
+            for (int guard = 0; t != null && guard < 64; guard++) {
+                out.add(t);
+                if (t.equals("java/lang/Object")) return out;
+                byte[] bytes = read(t);
+                if (bytes == null) { out.add("java/lang/Object"); return out; }
+                ClassReader r = new ClassReader(bytes);
+                if ((r.getAccess() & org.objectweb.asm.Opcodes.ACC_INTERFACE) != 0) return null;
+                t = r.getSuperName();
+            }
+            if (!out.contains("java/lang/Object")) out.add("java/lang/Object");
+            return out;
+        }
+
+        private static byte[] read(String type) {
+            String res = type + ".class";
+            java.io.InputStream in = null;
+            try {
+                ClassLoader cl = net.minecraft.launchwrapper.Launch.classLoader;
+                if (cl != null) in = cl.getResourceAsStream(res);
+                if (in == null) in = ClassLoader.getSystemResourceAsStream(res);
+                if (in == null) return null;
+                java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192]; int n;
+                while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+                return o.toByteArray();
             } catch (Throwable t) {
-                return "java/lang/Object";
+                return null;
+            } finally {
+                try { if (in != null) in.close(); } catch (Throwable ignored) {}
             }
         }
     }

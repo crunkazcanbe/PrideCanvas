@@ -9,8 +9,7 @@ import org.lwjgl.opengl.GL11;
 import java.util.*;
 
 /**
- * The animation engine every Pride screen shares (her ask 2026-09-30: "smooth transitions and animations for
- * everything when you click buttons… very pretty"). Frame-rate independent: values chase their targets by real
+ * The animation engine every Pride screen shares (requested feature). Frame-rate independent: values chase their targets by real
  * time, so 30 fps and 240 fps look the same.
  *
  *   DPAnim.approach(key, target, speed)   a smoothed 0..1 value per object (hover glow, lift, press)

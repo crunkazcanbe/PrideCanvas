@@ -90,15 +90,17 @@ public class DPWorldSelect extends GuiScreen {
     private void loadWorlds() {
         worlds.clear();
         icons.clear();
-        try {
-            ISaveFormat sf = this.mc.getSaveLoader();
-            List<WorldSummary> list = sf.getSaveList();
-            Collections.sort(list);
-            worlds.addAll(list);
-        } catch (Throwable t) {
-            // none / unreadable
-        }
         File savesDir = new File(this.mc.mcDataDir, "saves");
+        try {
+            worlds.addAll(DPWorldCache.list(savesDir));     // cached + no data fixer: was ~1 minute with 29 modded worlds
+        } catch (Throwable t) {
+            try {                                           // fallback: vanilla's slow list
+                ISaveFormat sf = this.mc.getSaveLoader();
+                List<WorldSummary> list = sf.getSaveList();
+                Collections.sort(list);
+                worlds.addAll(list);
+            } catch (Throwable ignored) {}
+        }
         for (WorldSummary w : worlds) {
             ResourceLocation loc = DEFAULT_ICON;
             try {

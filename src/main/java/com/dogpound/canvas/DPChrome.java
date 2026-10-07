@@ -63,7 +63,7 @@ public final class DPChrome {
     }
 
     /** Every vanilla/Forge sub-screen that gets Pride buttons + backdrop, on the title screen AND in-game
-     *  (her ask 2026-09-30: "theme all the sub menus… any sub menu you can find"). An allowlist on purpose:
+     *  (requested feature). An allowlist on purpose:
      *  containers, chat, books, signs and command blocks keep their own look. */
     private static final java.util.Set<String> THEMABLE = new java.util.HashSet<String>(java.util.Arrays.asList(
             "GuiOptions", "GuiVideoSettings", "GuiControls", "GuiScreenOptionsSounds", "GuiLanguage", "GuiSnooper",
@@ -71,7 +71,11 @@ public final class DPChrome {
             "GuiScreenAdvancements", "GuiModList", "GuiConfig", "GuiCreateWorld", "GuiCreateFlatWorld", "GuiFlatPresets",
             "GuiCustomizeWorldScreen", "GuiScreenCustomizePresets", "GuiWorldEdit", "GuiYesNo", "GuiGameOver",
             "GuiDisconnected", "GuiErrorScreen", "GuiScreenAddServer", "GuiScreenServerList", "GuiConfirmOpenLink",
-            "GuiScreenWorking", "GuiMultiplayer", "GuiWorldSelection", "GuiIngameModOptions", "GuiScrollingList"));
+            "GuiMultiplayer", "GuiWorldSelection", "GuiIngameModOptions", "GuiScrollingList",
+            // OTG world setup (requested feature)
+            "OTGGuiPresetList", "OTGGuiDimensionList", "OTGGuiEnterWorldName", "OTGGuiWorldSelection",
+            // Lucraft/PymTech "Addon Packs" (requested feature)
+            "GuiAddonPacks"));
 
     public static boolean themable(GuiScreen g) {
         return g != null && (THEMABLE.contains(g.getClass().getSimpleName()) || g instanceof net.minecraftforge.fml.client.config.GuiConfig);
@@ -114,9 +118,11 @@ public final class DPChrome {
         if (tw > maxW) { th = (int) ((float) maxW * d[1] / d[0]); tw = maxW; }
         int x = cx - tw / 2;
         GlStateManager.enableBlend();
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        int tint = "Tinted".equals(DPConfig.menuLogo) ? PrideFrame.PINK : 0xFFFFFFFF;   // menu theme: logo in the theme's colour
+        GlStateManager.color((tint >> 16 & 255) / 255F, (tint >> 8 & 255) / 255F, (tint & 255) / 255F, 1.0F);
         mc.getTextureManager().bindTexture(rl);
         Gui.drawScaledCustomSizeModalRect(x, top, 0.0F, 0.0F, d[0], d[1], tw, th, d[0], d[1]);
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     /** The brand logo for the main menu (DogPound / VERSION 3). */
@@ -127,6 +133,7 @@ public final class DPChrome {
     /** Same brand logo, positioned by explicit width — used by the loading screen (no GuiScreen)
      *  so the DogPound name sits in the exact same spot as on the main menu. */
     public static void drawBrand(Minecraft mc, int width) {
+        if ("Hidden".equals(DPConfig.menuLogo)) return;                 // menu theme: no logo
         ResourceLocation rl = new ResourceLocation(DPMenuMod.MODID, "textures/gui/logo.png");
         int targetW = Math.min((int) (width * 0.42F), 360);
         int[] d = dims(mc, rl);
@@ -159,8 +166,8 @@ public final class DPChrome {
         String k = key(g);
         if (k == null) return;
         Minecraft mc = Minecraft.getMinecraft();
-        Gui.drawRect(0, 0, g.width, BANNER_H, BANNER_BG);
-        Gui.drawRect(0, BANNER_H - 1, g.width, BANNER_H, ACCENT_LINE);
+        Gui.drawRect(0, 0, g.width, BANNER_H, PrideFrame.PANEL_TOP | 0xFF000000);
+        Gui.drawRect(0, BANNER_H - 1, g.width, BANNER_H, PrideFrame.PINK);
         ResourceLocation rl = new ResourceLocation(DPMenuMod.MODID, "textures/gui/title_" + k + ".png");
         drawArt(mc, rl, g.width / 2, (BANNER_H - TITLE_H) / 2, TITLE_H, g.width - 24);
     }

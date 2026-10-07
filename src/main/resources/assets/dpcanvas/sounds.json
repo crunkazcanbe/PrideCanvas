@@ -115,5 +115,14 @@
     "stream": true
    }
   ]
+ },
+ "ui.pop": {
+  "category": "master",
+  "sounds": [
+   {
+    "name": "dpcanvas:ui/pop",
+    "stream": false
+   }
+  ]
  }
 }

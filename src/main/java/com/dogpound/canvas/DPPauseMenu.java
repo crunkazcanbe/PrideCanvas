@@ -20,8 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The Pride pause menu (her ask 2026-09-30: "do away with the esc menu… make a complete custom one… look at every
- * mod in the menu… very pretty like the main menu… smooth transitions and animations… pretty sounds").
+ * The Pride pause menu (requested feature).
  *
  * How every mod keeps working: a REAL GuiIngameMenu is built off-screen (so Forge fires InitGuiEvent and every
  * mod adds its buttons to it — Quark, PolyPatcher, OneConfig, Indicatia, Universal Tweaks, LOTR, Mystcraft…).
@@ -81,6 +80,11 @@ public class DPPauseMenu extends GuiScreen {
             for (GuiButton b : realButtons) if (b.id == id) order.add(b);
         for (GuiButton b : realButtons) if (b.id != BACK && b.id != QUIT && !order.contains(b)) order.add(b);   // mods' buttons
         prideTiles.add(new String[]{"Browser", "#web"});                  // the website, in-game
+        prideTiles.add(new String[]{"System Monitor", "#sysmon"});        // CPU / GPU / VRAM / RAM / speeds
+        prideTiles.add(new String[]{"Themes", "#themes"});                // pack-wide menu themes (requested feature)
+        prideTiles.add(new String[]{"HUD Theme", "#hudtheme"});           // her 16 HUD designs (sweets, teddy, ...)
+        prideTiles.add(new String[]{"HUD Settings", "#hudsettings"});     // every HUD option
+        prideTiles.add(new String[]{"Crosshair", "#crosshair"});          // every crosshair option + cute themes
         addPride("Pride Hub", "/pride", "realmcoin");
         addPride("Pride Store", "/store", "realmcoin");
         addPride("Commands", "/pcmds", "realmcoin");
@@ -89,6 +93,7 @@ public class DPPauseMenu extends GuiScreen {
         addPride("Block History", "/pp gui", "prideprism");
         addPride("Crash Reports", "/pridecrash", "pridecrash");
         addPride("Quest Book", "/quests", "pridequests");
+        addPride("Chat Settings", "#pridechat", "pridechat");           // every PrideChat option, straight from Esc (her 2026-10-05 ask)
         addPride("Tails & Ears", "#config:ears", "ears");             // Ears' own editor (the Ears Manipulator)
         addPride("Tails & Ears", "#config:tails", "tails");           // the Tails mod's editor, if that one is on instead
 
@@ -128,6 +133,17 @@ public class DPPauseMenu extends GuiScreen {
             buttonList.add(new DPButton(POP_EXIT, p.cx + bw + 6, by, bw, 22, "Quit Game").plain().sound(DPSounds.CONFIRM));
             buttonList.add(new DPButton(POP_CANCEL, p.cx + 2 * (bw + 6), by, bw, 22, "Cancel").plain().sound(DPSounds.BACK));
             for (GuiButton b : buttonList) if (b.id < POP_QUIT) b.enabled = false;
+        }
+    }
+
+    /** PrideChat's settings screen (its constructor isn't public, so reflection) */
+    private void openPrideChat() {
+        try {
+            java.lang.reflect.Constructor<?> c = Class.forName("com.dogpound.pridechat.GuiChatSettings").getDeclaredConstructor(net.minecraft.client.gui.GuiScreen.class);
+            c.setAccessible(true);
+            mc.displayGuiScreen((net.minecraft.client.gui.GuiScreen) c.newInstance(this));
+        } catch (Throwable t) {
+            System.out.println("[PrideCanvas] couldn't open PrideChat settings: " + t);
         }
     }
 
@@ -173,7 +189,7 @@ public class DPPauseMenu extends GuiScreen {
 
         // the world stays visible, softly tinted in the trans colours
         int dim = (int) (150 * vis);
-        PrideFrame.gradient(0, 0, width, height, (dim << 24) | 0x16092F, ((int) (dim * 1.2f) << 24) | 0x2B1745);
+        PrideFrame.gradient(0, 0, width, height, (dim << 24) | DPStyle.DEEP, ((int) (dim * 1.2f) << 24) | DPStyle.MID);
         if (DPConfig.sparkles) DPAnim.sparkles(width, height, 26);
 
         PrideFrame f = frame();
@@ -217,16 +233,23 @@ public class DPPauseMenu extends GuiScreen {
 
     private void drawPopup(int mx, int my, float pt) {
         float p = DPConfig.animations ? DPAnim.easeOutBack(DPAnim.progress(popupAt, 0, 240)) : 1;
-        drawRect(0, 0, width, height, ((int) (120 * Math.min(1, p)) << 24) | 0x0B0518);
+        // her report 10-02: the tiles (drawn nearer the camera) showed THROUGH this box — lift it in front of everything
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(0, 0, 500);
+        GlStateManager.disableDepth();
+        drawRect(0, 0, width, height, ((int) (170 * Math.min(1, p)) << 24) | (PrideFrame.PANEL_BOTTOM & 0xFFFFFF));
         PrideFrame f = popupFrame();
         GlStateManager.pushMatrix();
         GlStateManager.translate(width / 2f, height / 2f, 0);
         GlStateManager.scale(p, p, 1);
         GlStateManager.translate(-width / 2f, -height / 2f, 0);
+        PrideFrame.gradient(f.x, f.y, f.x + f.w, f.y + f.h, PrideFrame.PANEL_TOP | 0xFF000000, PrideFrame.PANEL_BOTTOM | 0xFF000000);   // fully solid behind the box
         f.drawOver(mc.isIntegratedServerRunning() ? "Leave this world?" : "Leave this server?", null);
         drawCenteredString(fontRenderer, mc.isIntegratedServerRunning() ? "Your world is saved first. ❤" : "You can come back any time. ❤", width / 2, f.cy + 6, 0xFFFFFF);
         drawCenteredString(fontRenderer, "§7" + sessionText() + " this session", width / 2, f.cy + 20, 0xFFFFFF);
         for (GuiButton b : buttonList) if (b.id >= POP_QUIT) b.drawButton(mc, mx, my, pt);
+        GlStateManager.popMatrix();
+        GlStateManager.enableDepth();
         GlStateManager.popMatrix();
     }
 
@@ -304,7 +327,13 @@ public class DPPauseMenu extends GuiScreen {
         if (b.id >= PRIDE_BASE && b.id < PRIDE_BASE + prideTiles.size()) {
             String cmd = prideTiles.get(b.id - PRIDE_BASE)[1];
             if (cmd.startsWith("#config:")) { later(() -> openModConfig(cmd.substring(8))); return; }
+            if (cmd.equals("#pridechat")) { later(() -> openPrideChat()); return; }
             if (cmd.equals("#web")) { later(() -> DPWeb.open(this, DPWeb.homeUrl())); return; }
+            if (cmd.equals("#sysmon")) { later(() -> mc.displayGuiScreen(new DPSysMonitor(this))); return; }
+            if (cmd.equals("#themes")) { later(() -> mc.displayGuiScreen(new DPMenuThemeScreen(this))); return; }
+            if (cmd.equals("#hudtheme")) { later(() -> mc.displayGuiScreen(new DPHudThemeScreen(this))); return; }
+            if (cmd.equals("#hudsettings")) { later(() -> mc.displayGuiScreen(new DPHudSettingsScreen(this))); return; }
+            if (cmd.equals("#crosshair")) { later(() -> mc.displayGuiScreen(new DPCrosshairScreen(this))); return; }
             close(() -> runCommand(cmd));
         }
     }

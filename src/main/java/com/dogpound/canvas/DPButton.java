@@ -27,6 +27,10 @@ public class DPButton extends GuiButton {
     private boolean wasHovered;
     private long shineAt, pressAt;
 
+    /** the mod's own button this one replaced on screen: a mod button subclass may do its work in mousePressed
+     *  (Pride Tweaks' opener did, and stopped opening once reskinned, her 2026-10-05 report), so clicks go to it too */
+    public GuiButton orig;
+
     public DPButton(int id, int x, int y, int w, int h, String text) {
         super(id, x, y, w, h, text);
     }
@@ -95,6 +99,10 @@ public class DPButton extends GuiButton {
     @Override
     public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
         boolean hit = super.mousePressed(mc, mouseX, mouseY);
+        if (hit && orig != null) {
+            orig.x = x; orig.y = y; orig.width = width; orig.height = height; orig.enabled = enabled; orig.visible = true;
+            try { orig.mousePressed(mc, mouseX, mouseY); } catch (Throwable ignored) {}
+        }
         if (hit && DPConfig.animations) {
             pressAt = DPAnim.now();
             int[] rainbow = PrideFrame.RAINBOW;

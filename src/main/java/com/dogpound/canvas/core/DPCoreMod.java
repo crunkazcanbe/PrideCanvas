@@ -14,7 +14,10 @@ import java.util.Map;
 @IFMLLoadingPlugin.MCVersion("1.12.2")
 @IFMLLoadingPlugin.Name("Pride Core")
 @IFMLLoadingPlugin.SortingIndex(1001)
-public class DPCoreMod implements IFMLLoadingPlugin {
+public class DPCoreMod implements IFMLLoadingPlugin, zone.rong.mixinbooter.IEarlyMixinLoader {
+
+    /** early mixins: vanilla GUI classes (Pride Item FX on GuiContainer) */
+    @Override public java.util.List<String> getMixinConfigs() { return java.util.Collections.singletonList("pridecanvas.mixins.json"); }
 
     @Override
     public String[] getASMTransformerClass() {
@@ -27,6 +30,8 @@ public class DPCoreMod implements IFMLLoadingPlugin {
         // Install the log capture buffer NOW (coremod load = before the splash starts),
         // so the native boot splash already has scrolling log lines to show. Guarded so
         // it can never break early loading.
+        // Safe Mode (loading screen #16): count unfinished starts, ask after two in a row - BEFORE Forge reads mods/
+        try { com.dogpound.canvas.DPSafeMode.onCoremodStart(); } catch (Throwable ignored) {}
         try { com.dogpound.canvas.DPLogBuffer.install(); } catch (Throwable ignored) {}
         // Pride loading music starts here, so it plays from the very first loading bar
         try { com.dogpound.canvas.DPMusic.startFromCoremod(); } catch (Throwable ignored) {}

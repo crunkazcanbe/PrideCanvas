@@ -13,7 +13,7 @@ apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
-version = '0.1.0'
+version = '0.2.0'
 group = 'com.dogpound.canvas'
 archivesBaseName = 'PrideCanvas-1.12.2'
 
@@ -70,6 +70,8 @@ dependencies {
     // directly, so no annotation processor / refmap is needed.
     compileOnly 'org.spongepowered:mixin:0.8.5'
     compileOnly files('libs/mixinbooter-api.jar')
+    compileOnly files('libs/gunsrpg.jar')
+    compileOnly files('libs/vampirism.jar')
     compileOnly files('libs/mineandslash.jar')
 
     // You may put jars on which you depend on in ./libs or you may define them like so..

@@ -17,6 +17,112 @@ public class DPConfig {
     @Config.Comment("Folder or display name of the world to open. Empty = the world you played most recently.")
     public static String autoLoadWorldName = "";
 
+    @Config.Name("Pride HUD")
+    @Config.Comment("One strip across the bottom of the screen (on top of the hotbar) holding every HUD: Minecraft's bars in the middle and every mod's overlay in its own card. Off = every mod draws where it always did.")
+    public static boolean hudEnabled = true;
+
+    @Config.Name("Pride HUD Pass-Through Mods")
+    @Config.Comment("Comma-separated mod ids that keep drawing in their own place instead of moving into the HUD strip.")
+    public static String hudPassthrough = "";
+
+    @Config.Name("HUD size")
+    @Config.Comment("How big the Pride HUD strip is drawn. 1 = follows your GUI Scale like the rest of the game (default, her choice 2026-10-04: small). 2 = twice as big, and so on. 0 = automatic (about a tenth of the screen's height). Page Up / Page Down change it in game.")
+    @Config.RangeDouble(min = 0, max = 6)
+    public static double hudScale = 1;
+
+    @Config.Name("HUD: hotbar grows with the HUD")
+    @Config.Comment("Draw the hotbar at the same size as the HUD strip so they match on big screens.")
+    public static boolean hudScaleHotbar = true;
+
+    @Config.Name("Menu theme")
+    @Config.Comment("Colours of every Pride menu (main menu, Esc menu, options, settings screens): pride, classic, midnight, forest, ocean, sunset, mono, nether, end, cherry, candy, cyber, steampunk, terminal, royal, ice, autumn, lavender. Esc menu > Themes or Options > Themes.")
+    public static String menuTheme = "pride";
+
+    @Config.Name("Menu theme: logo")
+    @Config.Comment("The big logo on the main menu and loading screen: Pride (its own colours), Tinted (in the theme's colours) or Hidden.")
+    public static String menuLogo = "Pride";
+
+    @Config.Name("Menu theme: wallpaper")
+    @Config.Comment("Behind the main menu: Animated (the moving wallpaper), Theme (a gradient in the theme's colours) or Dark.")
+    public static String menuWallpaper = "Animated";
+
+    @Config.Name("Menu theme: Pride messages")
+    @Config.Comment("The main-menu quotes and loading tips about Pride / trans rights. Off = neutral, friendly ones. Picking a non-Pride theme turns this off (switch it back on any time).")
+    public static boolean themePrideMessages = true;
+
+    @Config.Name("Menu theme: character")
+    @Config.Comment("The little character in the top-left corner of the main menu.")
+    public static boolean themeCharacter = true;
+
+    @Config.Name("Menu theme: HUD matches")
+    @Config.Comment("Picking a menu theme also switches the HUD theme to its partner.")
+    public static boolean themeMatchHud = false;
+
+    @Config.Name("Menu theme: loading screen matches")
+    @Config.Comment("Picking a menu theme also recolours the loading screen (from the next start).")
+    public static boolean themeMatchLoading = true;
+
+    @Config.Name("HUD theme")
+    @Config.Comment("How the hearts / food / water card looks: sweets (her pick 2026-10-04), pride, teddy, candy, picnic, cloud, ribbon, kawaii, paws, classic, bars, potions, pills, rings, numbers, crystals, wings, or minecraft (Minecraft's own icons + Scaling Health etc. as they draw them). Esc menu > HUD Theme.")
+    public static String hudTheme = "sweets";
+
+    @Config.Name("HUD: hotbar matches the HUD theme")
+    @Config.Comment("The hotbar (and PrideInventory's long hotbar) uses the same colours and decorations as the HUD theme so they look like one piece.")
+    public static boolean hudThemeHotbar = true;
+
+    @Config.Name("HUD background opacity %")
+    @Config.RangeInt(min = 0, max = 100)
+    public static int hudOpacity = 88;
+
+    @Config.Name("HUD: 24-hour clock")
+    public static boolean hudClock24 = false;
+
+    @Config.Name("HUD: player card (face, name, level, mode, facing)")
+    public static boolean hudShowPlayer = true;
+
+    @Config.Name("HUD: world card (time, day, weather, place, light, fps)")
+    public static boolean hudShowWorld = true;
+
+    @Config.Name("HUD: hearts + food from Scaling Health / Scaling Feast / AppleSkin")
+    @Config.Comment("With any of those mods installed, the Pride HUD shows their real hearts and food bars (coloured heart rows, bigger hunger, saturation) instead of drawing its own.")
+    public static boolean hudVitalsFromMods = true;
+
+    @Config.Name("System Monitor corner readout")
+    @Config.Comment("Small FPS / CPU / GPU / VRAM / RAM readout in the top-left corner while playing (switch it in the System Monitor screen).")
+    public static boolean sysOverlay = false;
+
+    @Config.Name("Pride Crosshair")
+    @Config.Comment("A crosshair that shows what you can do: attack charge, interact, right tool, mining progress, bow draw, throwing, eating, shield.")
+    public static boolean prideCrosshair = true;
+
+    @Config.Name("Pride block outline")
+    @Config.Comment("The outline round the block you look at shimmers through the Pride colours and fills up while you mine it.")
+    public static boolean prideOutline = true;
+
+    @Config.Name("Pride advancement screen")
+    @Config.Comment("The L key opens the Pride advancement list (every advancement, what to do, when you got it) instead of Minecraft's tree.")
+    public static boolean prideAdvancements = true;
+
+    @Config.Name("Pop-ups: Advancements")
+    @Config.Comment("Show the 'Advancement Made!' pop-ups in the top right.")
+    public static boolean toastAdvancements = false;
+
+    @Config.Name("Pop-ups: New Recipes")
+    @Config.Comment("Show the 'New Recipes Unlocked!' pop-ups in the top right.")
+    public static boolean toastRecipes = false;
+
+    @Config.Name("Pop-ups: Tutorial Hints")
+    @Config.Comment("Show Minecraft's tutorial hints (move with WASD, punch a tree, open your inventory...).")
+    public static boolean toastTutorial = false;
+
+    @Config.Name("Pop-ups: Other Mods")
+    @Config.Comment("Show pop-ups that other mods add to the top-right corner.")
+    public static boolean toastOther = true;
+
+    @Config.Name("Mouse Vibration")
+    @Config.Comment("Buzz a SteelSeries Rival 700 (through the pridemouse helper) when you get hit, die, level up, eat, pick things up, earn advancements and click in menus.")
+    public static boolean mouseBuzz = true;
+
     @Config.Name("Mine and Slash Bars Position")
     @Config.Comment("Where the Mine and Slash level badge + health/mana/energy/xp bars sit, all together: top_center, top_left, top_right, "
             + "middle_left, middle_right, bottom_left (above the hotbar). Moved off top_left on 2026-10-02 because the inventory's side buttons covered them.")

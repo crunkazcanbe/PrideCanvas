@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Popups that ask a question (Forge "missing registries?", yes/no boxes, error/disconnect screens)
  * get written to pride-prompts/prompt.txt + the log + a screenshot, so Claude can SEE them
- * (her ask 2026-09-29: "you can't see, you got to build that into the pride canvas").
+ * (requested feature).
  * Answer by writing a button label (or number) to pride-prompts/answer — ~/bin/mcprompt does that.
  */
 public final class DPPrompts {

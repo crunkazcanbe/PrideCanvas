@@ -9,8 +9,7 @@ import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * Menus fill the screen (her ask 2026-09-30: "some of the menus… are real skinny on the monitor in the center…
- * make those… fit the whole screen"). On her huge monitor with GUI Scale 2 every menu was drawn tiny. While a
+ * Menus fill the screen (requested feature). On her huge monitor with GUI Scale 2 every menu was drawn tiny. While a
  * menu is open this switches to a bigger GUI scale (config: 0 = the biggest that fits), and puts her own scale
  * back the moment she's playing again — so the hotbar/HUD stay the size she chose. If she changes GUI Scale
  * herself while a menu is open, her new choice is kept.

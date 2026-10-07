@@ -49,6 +49,7 @@ public final class DPLoadingHook {
             GlStateManager.color(1F, 1F, 1F, 1F);
             DPBackground.draw(mc, w, h);
             DPLoadingScreen.draw(mc, w, h, progress);
+            if (mc.fontRenderer != null) DPWorldCancel.drawButton(mc.fontRenderer, w, h, Math.max(1, h / 540));
             GlStateManager.color(1F, 1F, 1F, 1F);
             GlStateManager.depthMask(true);
             GlStateManager.enableDepth();

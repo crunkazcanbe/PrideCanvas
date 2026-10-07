@@ -126,7 +126,7 @@ public class DPModBrowser extends GuiScreen {
         this.buttonList.add(new DPButton(12, rx + half + 4, H - 64, rw - half - 4, 20,
                 "Sort: " + DPModApi.sortLabel(site, sort)).plain());
         this.buttonList.add(new DPButton(13, rx, H - 40, rw, 20,
-                browserMode ? "< Back to Mod List" : "Open Web Browser").plain());
+                browserMode ? "< Back to Mod List" : "\u2726 Browse & Install").plain());
         // back
         this.buttonList.add(new DPButton(0, L + 12, H - 28, 120, 20, "Back").plain());
         if (restartPrompt) buildRestartButtons();
@@ -520,6 +520,7 @@ public class DPModBrowser extends GuiScreen {
                 if (!browserMode) doSearch();
                 break;
             case 13:
+                if (!browserMode) { this.mc.displayGuiScreen(new DPContentBrowser(this)); break; }   // the all-custom browser
                 if (browserMode) {                    // close the embedded browser, back to the list
                     browserMode = false;
                     DPMcef.close();
@@ -593,7 +594,10 @@ public class DPModBrowser extends GuiScreen {
 
     /** Best-effort: relaunch the exact same process after a short delay, then shut down cleanly.
      *  Reads /proc/self/cmdline; if that fails we just quit (she relaunches). */
-    private void doRestart() {
+    private void doRestart() { restartGame(); }
+
+    /** start the same game again (same java, same args) a few seconds after this one quits */
+    static void restartGame() {
         try {
             byte[] raw = java.nio.file.Files.readAllBytes(new File("/proc/self/cmdline").toPath());
             List<String> args = new ArrayList<String>();
@@ -611,7 +615,7 @@ public class DPModBrowser extends GuiScreen {
                 pb.start();
             }
         } catch (Throwable ignored) {}
-        this.mc.shutdown();
+        net.minecraft.client.Minecraft.getMinecraft().shutdown();
     }
 
     @Override
